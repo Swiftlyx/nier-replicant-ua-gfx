@@ -1,0 +1,5 @@
+* text=auto
+# Windows tools: cmd and the generators (Python on Windows) write CRLF, build.bat test compares byte for byte
+*.bat text eol=crlf
+shader_edits.h text eol=crlf
+ao_shader.h text eol=crlf

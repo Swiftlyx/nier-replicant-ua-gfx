@@ -1,0 +1,14 @@
+LIBRARY
+EXPORTS
+    XInputGetState = proxy_XInputGetState
+    XInputSetState = proxy_XInputSetState
+    XInputGetCapabilities = proxy_XInputGetCapabilities
+    XInputGetDSoundAudioDeviceGuids = proxy_XInputGetDSoundAudioDeviceGuids
+    LunarTearPluginInit
+    NierGFX_Configure
+    NierGFX_Apply
+    NierGFX_FindImport
+    NierGFX_PatchShader
+    NierGFX_FreeShader
+    NierGFX_HookDevice
+    NierGFX_PatchedShaders
