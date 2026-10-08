@@ -78,9 +78,12 @@
    Найпростіше — глобальна ін'єкція через програму Special K (SKIF): запустіть її службу, потім гру. Для
    локального встановлення покладіть `SpecialK64.dll` у теку гри під назвою `d3d11.dll`: назву `dxgi.dll`
    займає Lunar Tear.
-2. Пропишіть кожен `.asi` у налаштуваннях Special K: у `SpecialK.ini` профілю гри
-   (`Документи\My Mods\SpecialK\Profiles\…`) при глобальній ін'єкції або в `d3d11.ini` у теці гри при
-   локальному встановленні. У `Filename` — повний шлях до файлу:
+2. Запустіть гру й відкрийте меню Special K (Ctrl + Shift + Backspace): **Plug-Ins → Third-Party →
+   Add Plug-In**. Додайте кожен `.asi` і поставте йому **Load Order: Early**. Плагіни запрацюють з
+   наступного запуску гри.
+3. Або те саме вручну: допишіть у `SpecialK.ini` профілю гри (`Документи\My Mods\SpecialK\Profiles\…`)
+   при глобальній ін'єкції чи в `d3d11.ini` у теці гри при локальному встановленні. У `Filename` —
+   повний шлях до файлу:
 
    ```ini
    [Import.NierReplicantUA]
@@ -232,10 +235,12 @@ archive into the game folder (where `NieR Replicant ver.1.22474487139.exe` is):
     `Ultimate-ASI-Loader_x64.zip` into the game folder as `winmm.dll` (the game loads it, and no other mod
     here uses that name). `data\ua.arc` and `data\info_uk.arc` stay in the game's `data` folder, and
     `NierReplicantGFX.ini` next to `NierReplicantGFX.asi`;
-  - [Special K](https://www.special-k.info/) ([GitHub](https://github.com/SpecialKO/SpecialK)): add an
+  - [Special K](https://www.special-k.info/) ([GitHub](https://github.com/SpecialKO/SpecialK)): in the
+    Special K menu (Ctrl + Shift + Backspace) open Plug-Ins → Third-Party → Add Plug-In, add each `.asi`
+    and set its Load Order to Early; it takes effect on the next start. Or add an
     `[Import.NierReplicantUA]` section (and the same for GFX) to `SpecialK.ini` of the game profile or to
     `d3d11.ini` of a local install, with `Architecture=x64`, `Role=ThirdParty`, `When=Early` and the full
-    path in `Filename`. `When=Early` is required for the translation.
+    path in `Filename`. Early loading is required for the translation.
 
 For the translation, choose English as the text language in the game settings: the translation takes
 the English slot.
