@@ -60,6 +60,9 @@
 
 ### Який спосіб обрати
 
+Найпростіше й найшвидше — **Standalone**: завантажте архів і перетягніть його вміст у теку гри, нічого
+більше встановлювати не треба.
+
 - **Standalone** — якщо вам потрібні лише ці моди. Сторонні програми не потрібні, а плагін завантажується
   найраніше.
 - **Lunar Tear** — якщо ви вже ставите через нього інші моди. Він об'єднує архіви всіх модів, тож вони не
@@ -76,7 +79,7 @@
 ### Standalone
 
 1. Розпакуйте `UkrainianTranslation-Standalone.zip` і, якщо потрібна графіка,
-   `NierReplicantGFX-Standalone.zip` у теку гри.
+   `NierReplicantGFX-Standalone.zip` у теку гри, або відкрийте архів і просто перетягніть його вміст туди.
 2. Перевірте, що файли лежать так (у `data` є й власні файли гри, їх не чіпайте):
 
    ```
@@ -103,7 +106,7 @@
    ```
    NieR Replicant ver.1.22474487139\
    ├─ NieR Replicant ver.1.22474487139.exe
-   ├─ dxgi.dll                     сам Lunar Tear
+   ├─ dxgi.dll                     сам Lunar Tear (або d3d11.dll чи dinput8.dll)
    └─ LunarTear\
       └─ mods\
          ├─ UkrainianTranslation\
@@ -117,10 +120,29 @@
             └─ manifest.json
    ```
 
-Lunar Tear можна завантажувати й через Special K: додайте його в меню Special K як плагін (див. нижче) з
-**Load Order: Early**. Він має завантажитися раніше, ніж гра відкриє свої архіви. Якщо в
-`LunarTear\lunartear.log` є рядок «VFS hook missed», він завантажився запізно, і архіви модів, зокрема
-переклад, гра не побачить.
+Lunar Tear підміняє одразу три бібліотеки, тож його файл може називатися `dxgi.dll` (так радить його
+автор), `d3d11.dll` або `dinput8.dll` — будь-яка з цих назв, яку не займає інший мод. `dinput8.dll` — це
+також наш Standalone-переклад.
+
+Lunar Tear можна завантажувати й через Special K: додайте його файл у меню Special K як плагін (див.
+нижче) з **Load Order: Early**. Тоді назва й тека файлу довільні, а моди лишаються в `LunarTear\mods` у
+теці гри:
+
+```
+NieR Replicant ver.1.22474487139\
+├─ NieR Replicant ver.1.22474487139.exe
+├─ d3d11.dll                    Special K, якщо встановлений локально (див. нижче)
+├─ d3d11.ini                    налаштування Special K
+├─ SK_Res\
+│  └─ LunarTear.dll             Lunar Tear, підключений у меню Special K (назва й тека довільні)
+└─ LunarTear\
+   └─ mods\                     моди Lunar Tear лишаються тут
+      ├─ UkrainianTranslation\
+      └─ NierReplicantGFX\
+```
+
+Lunar Tear має завантажитися раніше, ніж гра відкриє свої архіви. Якщо в `LunarTear\lunartear.log` є
+рядок «VFS hook missed», він завантажився запізно, і архіви модів, зокрема переклад, гра не побачить.
 
 ### Ultimate ASI Loader і Special K
 
@@ -148,9 +170,26 @@ NieR Replicant ver.1.22474487139\
 ```
 
 Файли `.asi` (разом з `NierReplicantGFX.ini`) можна перенести й у підтеку `scripts` чи `plugins`, а
-`ua.arc` і `info_uk.arc` мають лишатися в `data` гри. Зі Special K при глобальній ін'єкції в теці гри немає
-DLL завантажувача, а при локальному встановленні замість `winmm.dll` лежить DLL Special K
-(`d3d11.dll` чи `dxgi.dll`) зі своїм ini.
+`ua.arc` і `info_uk.arc` мають лишатися в `data` гри.
+
+Зі Special K, встановленим локально, файли можуть лежати так:
+
+```
+NieR Replicant ver.1.22474487139\
+├─ NieR Replicant ver.1.22474487139.exe
+├─ d3d11.dll                    Special K (SpecialK64.dll під вільною назвою: d3d11.dll чи dxgi.dll)
+├─ d3d11.ini                    налаштування Special K, з тією ж назвою, що й його DLL
+├─ SK_Res\                      .asi можна класти сюди або прямо в теку гри
+│  ├─ NierReplicantUA.asi       переклад
+│  ├─ NierReplicantGFX.asi      графіка
+│  └─ NierReplicantGFX.ini      налаштування графіки, поруч із NierReplicantGFX.asi
+└─ data\
+   ├─ ua.arc                    переклад, завжди в data гри
+   └─ info_uk.arc               переклад, завжди в data гри
+```
+
+При глобальній ін'єкції `d3d11.dll` і `d3d11.ini` в теці гри немає: налаштування Special K лежать у
+`Документи\My Mods\SpecialK\Profiles\…`.
 
 **[Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader)**
 
@@ -349,7 +388,8 @@ in the game folder (Standalone), in `LunarTear\mods\NierReplicantGFX` (Lunar Tea
 ### Installation
 
 Ready-to-use files are on the [Releases](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest)
-page, three archives per plugin, one per loading method. Which one to pick:
+page, three archives per plugin, one per loading method. The simplest and fastest is Standalone: download
+the archive and drag its contents into the game folder. Which one to pick:
 
 - **Standalone**, if you only want these mods: no third-party tools, and the plugin loads first;
 - **Lunar Tear**, if you already install other mods with it: it merges the archives of all mods;
@@ -375,12 +415,15 @@ Use one method per plugin. Extract the archives into the game folder, the one wi
 
 - **Lunar Tear:** install [Lunar Tear](https://www.nexusmods.com/nierreplicant/mods/87), then extract
   `*-LunarTear.zip` into the game folder; the archives already contain `LunarTear\mods\…`, so missing
-  folders are created. Lunar Tear can also be loaded through Special K with Load Order Early; if
-  `LunarTear\lunartear.log` says "VFS hook missed", it loaded too late and archive mods are not applied.
+  folders are created. Lunar Tear stands in for three libraries, so its file may be named `dxgi.dll` (as its
+  author suggests), `d3d11.dll` or `dinput8.dll`, whichever no other mod uses. It can also be loaded
+  through Special K as a plug-in with Load Order Early, under any file name and in any folder; the mods
+  stay in `LunarTear\mods`. If `LunarTear\lunartear.log` says "VFS hook missed", it loaded too late and
+  archive mods are not applied.
 
   ```
   NieR Replicant ver.1.22474487139\
-  ├─ dxgi.dll                     Lunar Tear itself
+  ├─ dxgi.dll                     Lunar Tear itself (or d3d11.dll, dinput8.dll; or loaded by Special K)
   └─ LunarTear\
      └─ mods\
         ├─ UkrainianTranslation\    NierReplicantUA.dll, ua.arc, info.arc, manifest.json
@@ -412,7 +455,22 @@ Use one method per plugin. Extract the archives into the game folder, the one wi
     and set its Load Order to Early; it takes effect on the next start. Or add an
     `[Import.NierReplicantUA]` section (and the same for GFX) to `SpecialK.ini` of the game profile or to
     the ini of a local install, with `Architecture=x64`, `Role=ThirdParty`, `When=Early` and the full
-    path in `Filename`. Early loading is required for the translation.
+    path in `Filename`. Early loading is required for the translation. A local install may look like this
+    (with global injection there is no Special K DLL in the game folder; its settings are in
+    `Documents\My Mods\SpecialK\Profiles\…`):
+
+    ```
+    NieR Replicant ver.1.22474487139\
+    ├─ d3d11.dll                    Special K (SpecialK64.dll under a free name: d3d11.dll or dxgi.dll)
+    ├─ d3d11.ini                    Special K settings, named like its DLL
+    ├─ SK_Res\                      the .asi files may go here or straight into the game folder
+    │  ├─ NierReplicantUA.asi
+    │  ├─ NierReplicantGFX.asi
+    │  └─ NierReplicantGFX.ini      next to NierReplicantGFX.asi
+    └─ data\
+       ├─ ua.arc                    always in the game's data
+       └─ info_uk.arc               always in the game's data
+    ```
 
 For the translation, choose English as the text language in the game settings: the translation takes
 the English slot. To remove the mods, delete the extracted files; the game files are not changed.
