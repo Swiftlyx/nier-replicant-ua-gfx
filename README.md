@@ -51,10 +51,52 @@
 |---|---|---|
 | [Lunar Tear](https://www.nexusmods.com/nierreplicant/mods/87) (має бути вже встановлений) | [UkrainianTranslation-LunarTear.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-LunarTear.zip) | [NierReplicantGFX-LunarTear.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-LunarTear.zip) |
 | Без завантажувача: гра сама завантажує `dinput8.dll` і `xinput9_1_0.dll` зі своєї теки | [UkrainianTranslation-Standalone.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-Standalone.zip) | [NierReplicantGFX-Standalone.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-Standalone.zip) |
-| ASI-завантажувач ([Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader) або [Special K](https://www.special-k.info/) з `When=Early`) | [UkrainianTranslation-ASI.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-ASI.zip) | [NierReplicantGFX-ASI.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-ASI.zip) |
+| ASI-завантажувач: Ultimate ASI Loader або Special K (див. нижче) | [UkrainianTranslation-ASI.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-ASI.zip) | [NierReplicantGFX-ASI.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-ASI.zip) |
 
 У Steam Deck або Proton для способу без завантажувача додайте в параметри запуску гри
 `WINEDLLOVERRIDES="dinput8,xinput9_1_0=n,b" %command%`.
+
+### Ultimate ASI Loader і Special K
+
+Гра 64-бітна й працює на DirectX 11, тож потрібні 64-бітні (x64) версії завантажувачів. Спершу
+розпакуйте в теку гри архіви `*-ASI.zip`.
+
+**[Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader)**
+
+1. На сторінці [релізів](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases) завантажте
+   `Ultimate-ASI-Loader_x64.zip`.
+2. Покладіть DLL з архіву в теку гри й назвіть її `winmm.dll`. Гра сама завантажує файл із такою назвою,
+   і її не займають інші моди: `dinput8.dll` і `xinput9_1_0.dll` — наші файли для способу без
+   завантажувача, `dxgi.dll` — Lunar Tear, `dxgi.dll` чи `d3d11.dll` — Special K.
+3. Файли `.asi` можна лишити в теці гри або перенести в підтеку `scripts` чи `plugins`. Файли
+   `data\ua.arc` і `data\info_uk.arc` мають лишатися в теці `data` гри, а `NierReplicantGFX.ini` — поруч
+   із `NierReplicantGFX.asi`.
+
+**[Special K](https://www.special-k.info/)** ([GitHub](https://github.com/SpecialKO/SpecialK))
+
+1. Встановіть Special K із сайту або з [релізів на GitHub](https://github.com/SpecialKO/SpecialK/releases).
+   Найпростіше — глобальна ін'єкція через програму Special K (SKIF): запустіть її службу, потім гру. Для
+   локального встановлення покладіть `SpecialK64.dll` у теку гри під назвою `d3d11.dll`: назву `dxgi.dll`
+   займає Lunar Tear.
+2. Пропишіть кожен `.asi` у налаштуваннях Special K: у `SpecialK.ini` профілю гри
+   (`Документи\My Mods\SpecialK\Profiles\…`) при глобальній ін'єкції або в `d3d11.ini` у теці гри при
+   локальному встановленні. У `Filename` — повний шлях до файлу:
+
+   ```ini
+   [Import.NierReplicantUA]
+   Architecture=x64
+   Role=ThirdParty
+   When=Early
+   Filename=C:\Program Files (x86)\Steam\steamapps\common\NieR Replicant ver.1.22474487139\NierReplicantUA.asi
+
+   [Import.NierReplicantGFX]
+   Architecture=x64
+   Role=ThirdParty
+   When=Early
+   Filename=C:\Program Files (x86)\Steam\steamapps\common\NieR Replicant ver.1.22474487139\NierReplicantGFX.asi
+   ```
+
+   `When=Early` обов'язковий для перекладу: плагін має змінити гру раніше, ніж вона прочитає текст.
 
 Щоб увімкнути переклад, оберіть у налаштуваннях гри мову тексту English. Переклад займає її місце,
 тому в списку мов він так і називається: English.
@@ -89,7 +131,7 @@ NierReplicantUA (адреси відносно початку exe):
 | `fishing` | `0x3A7D01`, `0x3A80D9` | см і кг для англійського слота: діапазон мов 3–5 → 2–5 |
 | `pickup` | виклики `snprintf` у `0xC17B0` | назва предмета пишеться відразу в 128-байтовий буфер повідомлення |
 | `talker` | `0xD68F3` | завантажувач `talker_name.tnd` не обрізає імена до 31 байта |
-| `index` | рядок `0xD07728` | `info.arc` → `info_uk.arc`, якщо є `data\info_uk.arc` |
+| `index` | `0x8ED281` | шлях індексу будується з рядка `info_uk.arc` у пам'яті плагіна замість `info.arc` (`0xD07728`), якщо є `data\info_uk.arc`; сам рядок гри не змінюється, бо нулі після нього код у `0x8ECBF3` використовує як порожній рядок |
 
 NierReplicantGFX перехоплює `D3D11CreateDevice` в імпорті гри, а на створеному пристрої — створення
 текстур, подань (views) і шейдерів:
@@ -185,7 +227,15 @@ archive into the game folder (where `NieR Replicant ver.1.22474487139.exe` is):
 - `*-Standalone.zip`: no loader needed, the game loads `dinput8.dll` and `xinput9_1_0.dll` from its
   folder. On Steam Deck or Proton add `WINEDLLOVERRIDES="dinput8,xinput9_1_0=n,b" %command%` to the
   launch options;
-- `*-ASI.zip`: for an ASI loader ([Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader), or [Special K](https://www.special-k.info/) with `When=Early`).
+- `*-ASI.zip`: for an ASI loader. The game is 64-bit DirectX 11, so use the x64 loaders:
+  - [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader): put the DLL from
+    `Ultimate-ASI-Loader_x64.zip` into the game folder as `winmm.dll` (the game loads it, and no other mod
+    here uses that name). `data\ua.arc` and `data\info_uk.arc` stay in the game's `data` folder, and
+    `NierReplicantGFX.ini` next to `NierReplicantGFX.asi`;
+  - [Special K](https://www.special-k.info/) ([GitHub](https://github.com/SpecialKO/SpecialK)): add an
+    `[Import.NierReplicantUA]` section (and the same for GFX) to `SpecialK.ini` of the game profile or to
+    `d3d11.ini` of a local install, with `Architecture=x64`, `Role=ThirdParty`, `When=Early` and the full
+    path in `Filename`. `When=Early` is required for the translation.
 
 For the translation, choose English as the text language in the game settings: the translation takes
 the English slot.

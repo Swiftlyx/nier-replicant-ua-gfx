@@ -21,8 +21,11 @@
  *   pickup   "Obtained <item>": the item name is formatted straight into the 128-byte message buffer
  *            instead of a 32-byte temporary.
  *   talker   The talker_name.tnd loader keeps speaker names longer than 31 bytes.
- *   index    When data\info_uk.arc exists, the game opens it instead of data\info.arc (the file name in
- *            the executable's data is changed), so the original index stays as it is.
+ *   index    When data\info_uk.arc exists, the game opens it instead of data\info.arc, so the original
+ *            index stays as it is. The lea at exe+0x8ED281 that passes "info.arc" (exe+0xD07728) to the
+ *            index path formatting points to a copy of "info_uk.arc" near the game instead. The string
+ *            itself must stay: the zero bytes after it are shared with other code (exe+0x8ECBF3 passes
+ *            exe+0xD07731 to the archive loader as an empty string).
  * Results go to NierReplicantUA.log next to the DLL.
  */
 #include <stdio.h>
@@ -38,6 +41,7 @@
 #define PARSER_START 0xD736Au
 #define PARSER_NEXT  0xD7397u
 #define SNPRINTF     0x7BAE0u
+#define INDEX_LEA    0x8ED281u
 #define INDEX_NAME   0xD07728u
 #define INDEX_FILE   L"data\\info_uk.arc"
 #define ENV_MARKER   L"NIER_REPLICANT_UA_LOADED"
@@ -94,8 +98,11 @@ static const char PICKUP_STUB[] =
     "48f7da"          /* neg rdx */
     "4881c280000000"; /* add rdx, 0x80; followed by jmp snprintf */
 
-static const char INDEX_ORIG[12] = "info.arc\0\0\0";
-static const char INDEX_NEW[12] = "info_uk.arc";
+static const Site INDEX_SITES[] = {
+    {INDEX_LEA, "4c8d0da0a44100", NULL},       /* lea r9, [rip+0x41a4a0] -> exe+0xD07728; written by apply_index() */
+    {INDEX_NAME, "696e666f2e61726300", NULL},  /* "info.arc" */
+};
+static const char INDEX_NEW[] = "info_uk.arc";
 
 /* ------------------------------------------------------------------ pool */
 
@@ -167,6 +174,21 @@ static int apply_pickup(uint8_t *base)
     return 1;
 }
 
+/* ------------------------------------------------------------------ index */
+
+/* Points the lea at exe+0x8ED281 to a copy of "info_uk.arc" near the game. */
+static int apply_index(uint8_t *base)
+{
+    uint8_t *name = alloc_near(base);
+    int32_t d;
+    if (!name)
+        return 0;
+    memcpy(name, INDEX_NEW, sizeof INDEX_NEW);
+    if (!rel32(base + INDEX_LEA + 7, name, &d))
+        return 0;
+    return write_bytes(base + INDEX_LEA + 3, &d, 4);
+}
+
 /* ------------------------------------------------------------------ entry points */
 
 /* Patches the game image at `base`; `game_dir` is the folder of the executable, with a trailing backslash. */
@@ -221,18 +243,14 @@ __declspec(dllexport) unsigned NierUA_Apply(uint8_t *base, const wchar_t *game_d
     swprintf(index_path, MAX_PATH, L"%ls%ls", game_dir, INDEX_FILE);
     if (GetFileAttributesW(index_path) == INVALID_FILE_ATTRIBUTES) {
         log_line("index    data\\info_uk.arc not found, the game reads data\\info.arc");
-    } else if (memcmp(base + INDEX_NAME, INDEX_NEW, sizeof INDEX_NEW) == 0) {
-        result |= R_INDEX << 8;
-        log_line("index    already info_uk.arc");
-    } else if (memcmp(base + INDEX_NAME, INDEX_ORIG, sizeof INDEX_ORIG) != 0) {
-        result |= R_INDEX << 16;
-        log_line("index    skipped: the code differs from the Steam version");
-    } else if (write_bytes(base + INDEX_NAME, INDEX_NEW, sizeof INDEX_NEW)) {
-        result |= R_INDEX;
-        log_line("index    applied: data\\info_uk.arc");
-    } else {
-        result |= R_INDEX << 16;
-        log_line("index    failed to write");
+    } else if (check_group(base, INDEX_SITES, 2, R_INDEX, "index", &result)) {
+        if (apply_index(base)) {
+            result |= R_INDEX;
+            log_line("index    applied: data\\info_uk.arc");
+        } else {
+            result |= R_INDEX << 16;
+            log_line("index    failed: no memory within 2 GB of the game or write error");
+        }
     }
     return result;
 }

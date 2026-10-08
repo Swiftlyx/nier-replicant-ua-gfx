@@ -96,7 +96,8 @@ int wmain(int argc, wchar_t **argv)
     printf("  result 0x%x\n", r);
     check((r & 0xF) == 0xF && !(r & 0x10) && !(r >> 16), "pool, fishing, pickup, talker applied; index not");
     check_applied(base);
-    check(memcmp(base + 0xD07728, "info.arc\0\0\0\0", 12) == 0, "index name unchanged");
+    check(memcmp(base + 0xD07728, "info.arc\0\0\0\0", 12) == 0 && bytes_are(base + 0x8ED281, "4c8d0da0a44100"),
+          "index: string and lea unchanged");
     FreeLibrary((HMODULE)base);
 
     printf("2. original exe, data\\info_uk.arc present\n");
@@ -104,7 +105,10 @@ int wmain(int argc, wchar_t **argv)
     r = apply(base, dir_with);
     printf("  result 0x%x\n", r);
     check((r & 0x1F) == 0x1F && !(r >> 16), "all five applied");
-    check(memcmp(base + 0xD07728, "info_uk.arc", 12) == 0, "index name info_uk.arc");
+    check(bytes_are(base + 0x8ED281, "4c8d0d") && strcmp((char *)lea_target(base + 0x8ED281), "info_uk.arc") == 0,
+          "index: lea r9 at 0x8ED281 points to \"info_uk.arc\"");
+    check(memcmp(base + 0xD07728, "info.arc\0\0\0\0", 12) == 0,
+          "index: \"info.arc\" and the empty string at 0xD07731 (used by 0x8ECBF3) unchanged");
     FreeLibrary((HMODULE)base);
 
     printf("3. original exe, text_common already parsed\n");
