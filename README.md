@@ -22,7 +22,8 @@
 - показує рекорди риболовлі в сантиметрах і кілограмах;
 - читає індекс архівів із `data\info_uk.arc`, тож оригінальний `data\info.arc` не треба замінювати.
 
-Тексти, шрифт і текстури перекладу поширюються окремо, архівом `ua.arc`.
+Тексти, шрифт і текстури перекладу лежать в архіві `ua.arc`, який входить у готові файли перекладу
+разом із плагіном (див. «Встановлення»).
 
 ## NierReplicantGFX
 
@@ -40,26 +41,23 @@
 
 ## Встановлення
 
-Кожен плагін можна підключити одним із трьох способів, для кожного оберіть один.
+Готові файли лежать на сторінці [Releases](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest).
+Для кожного плагіна там три архіви, по одному на спосіб підключення. Оберіть один спосіб і розпакуйте
+архів у теку гри, де лежить `NieR Replicant ver.1.22474487139.exe`.
 
-**Lunar Tear.** Скопіюйте теку мода в `LunarTear\mods\`: `UkrainianTranslation` для перекладу,
-`NierReplicantGFX` для графіки.
+| Спосіб | Переклад | Графіка |
+|---|---|---|
+| [Lunar Tear](https://github.com/ifa-ifa/Lunar-Tear) (має бути вже встановлений) | [UkrainianTranslation-LunarTear.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-LunarTear.zip) | [NierReplicantGFX-LunarTear.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-LunarTear.zip) |
+| Без завантажувача: гра сама завантажує `dinput8.dll` і `xinput9_1_0.dll` зі своєї теки | [UkrainianTranslation-Standalone.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-Standalone.zip) | [NierReplicantGFX-Standalone.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-Standalone.zip) |
+| ASI-завантажувач (Ultimate ASI Loader або Special K з `When=Early`) | [UkrainianTranslation-ASI.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-ASI.zip) | [NierReplicantGFX-ASI.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-ASI.zip) |
 
-**Без завантажувача.** Гра сама завантажує файли з такими назвами зі своєї теки:
-
-- переклад: `dinput8.dll`, `data\ua.arc` і `data\info_uk.arc`;
-- графіка: `xinput9_1_0.dll` і `NierReplicantGFX.ini`.
-
-У Steam Deck або Proton для цього способу додайте в параметри запуску гри
+У Steam Deck або Proton для способу без завантажувача додайте в параметри запуску гри
 `WINEDLLOVERRIDES="dinput8,xinput9_1_0=n,b" %command%`.
-
-**ASI-завантажувач** (Ultimate ASI Loader або Special K з `When=Early`): `NierReplicantUA.asi` разом
-із файлами `data\`, як вище, і `NierReplicantGFX.asi` разом із `NierReplicantGFX.ini`.
 
 Щоб увімкнути переклад, оберіть у налаштуваннях гри мову тексту English. Переклад займає англійський
 слот, тому після вибору ця мова в списку називатиметься «Українська».
 
-Щоб видалити плагіни, приберіть скопійовані файли.
+Щоб видалити плагіни, приберіть файли, розпаковані з архівів.
 
 ## Лог
 
@@ -150,7 +148,8 @@ The plugin:
 - shows fishing records in centimetres and kilograms;
 - reads the archive index from `data\info_uk.arc`, so the original `data\info.arc` stays as it is.
 
-The translation itself (text, font, textures) ships separately as `ua.arc`.
+The translation itself (text, font, textures) is in `ua.arc`, which comes with the plugin in the
+translation archives.
 
 ### NierReplicantGFX
 
@@ -167,14 +166,15 @@ Settings are in `NierReplicantGFX.ini` next to the DLL, each one described in th
 
 ### Installation
 
-Pick one way per plugin:
+Ready-to-use files are on the [Releases](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest)
+page, three archives per plugin, one per loading method. Pick one method per plugin and extract its
+archive into the game folder (where `NieR Replicant ver.1.22474487139.exe` is):
 
-- Lunar Tear: copy the mod folder (`UkrainianTranslation` or `NierReplicantGFX`) to `LunarTear\mods\`;
-- without a loader: put `dinput8.dll` with `data\ua.arc` and `data\info_uk.arc` (translation), or
-  `xinput9_1_0.dll` with `NierReplicantGFX.ini` (graphics), into the game folder. On Steam Deck or
-  Proton add `WINEDLLOVERRIDES="dinput8,xinput9_1_0=n,b" %command%` to the launch options;
-- an ASI loader (Ultimate ASI Loader, or Special K with `When=Early`): the `.asi` files with the same
-  data files.
+- `*-LunarTear.zip`: a mod for [Lunar Tear](https://github.com/ifa-ifa/Lunar-Tear), which must be installed;
+- `*-Standalone.zip`: no loader needed, the game loads `dinput8.dll` and `xinput9_1_0.dll` from its
+  folder. On Steam Deck or Proton add `WINEDLLOVERRIDES="dinput8,xinput9_1_0=n,b" %command%` to the
+  launch options;
+- `*-ASI.zip`: for an ASI loader (Ultimate ASI Loader, or Special K with `When=Early`).
 
 For the translation, choose English as the text language in the game settings: the translation takes
 the English slot.
