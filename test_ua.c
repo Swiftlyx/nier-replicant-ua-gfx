@@ -77,10 +77,10 @@ static void check_index(uint8_t *base)
     const char *game_name = (const char *)base + 0xD07728;
     uint8_t *stub = call_target(base + 0x8ED281);
     check(base[0x8ED281] == 0xE8 && bytes_are(base + 0x8ED286, "9090"), "index: lea at 0x8ED281 -> call stub; nop; nop");
-    check(strcmp(index_name(stub, "data/"), "info_uk.arc") == 0, "index stub: data/ -> info_uk.arc");
-    check(index_name(stub, "dlc/dlc01/") == game_name, "index stub: dlc/dlc01/ -> the game's info.arc");
-    check(index_name(stub, "") == game_name && index_name(stub, "data") == game_name &&
-              index_name(stub, "database/") == game_name, "index stub: \"\", data, database/ -> the game's info.arc");
+    check(strcmp(index_name(stub, ""), "info_uk.arc") == 0, "index stub: main data (empty folder) -> info_uk.arc");
+    check(index_name(stub, "dlc\\dlc01\\") == game_name, "index stub: dlc\\dlc01\\ -> the game's info.arc");
+    check(index_name(stub, "data/") == game_name && index_name(stub, "dlc/dlc01/") == game_name,
+          "index stub: any other folder -> the game's info.arc");
     check(memcmp(game_name, "info.arc\0\0\0\0", 12) == 0, "index: \"info.arc\" and the empty prefix at 0xD07731 unchanged");
 }
 

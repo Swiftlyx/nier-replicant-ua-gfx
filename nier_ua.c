@@ -22,11 +22,12 @@
  *            instead of a 32-byte temporary.
  *   talker   The talker_name.tnd loader keeps speaker names longer than 31 bytes.
  *   index    When data\info_uk.arc exists, the game opens it instead of data\info.arc, so the original
- *            index stays as it is. exe+0x8ED1F0 mounts a folder of archives (data/, dlc/dlc01/; the
- *            folder is copied to [rsi+0x28]) and opens prefix + "info.arc" there, the prefix being the
- *            empty string at exe+0xD07731 right after "info.arc" (exe+0xD07728). The lea that loads the
- *            name (exe+0x8ED281) becomes a call to a stub that picks "info_uk.arc" for data/ only; the
- *            DLC keeps its own info.arc, and the string bytes stay as they are.
+ *            index stays as it is. exe+0x8ED1F0 mounts a folder of archives (copied to [rsi+0x28]): the
+ *            main data with an empty folder name, the DLC as "dlc\dlc01\". It opens prefix + "info.arc"
+ *            there, the prefix being the empty string at exe+0xD07731 right after "info.arc"
+ *            (exe+0xD07728). The lea that loads the name (exe+0x8ED281) becomes a call to a stub that
+ *            picks "info_uk.arc" for the main data only; the DLC keeps its own info.arc, and the string
+ *            bytes stay as they are.
  * Results go to NierReplicantUA.log next to the DLL.
  */
 #include <stdio.h>
@@ -104,7 +105,7 @@ static const Site INDEX_SITES[] = {
     {INDEX_NAME, "696e666f2e61726300", NULL},  /* "info.arc" */
 };
 static const char INDEX_NEW[] = "info_uk.arc";
-#define INDEX_STUB_NAME 0x40                   /* offset of INDEX_NEW in the stub block */
+#define INDEX_STUB_SLOT 0x40                   /* offset of the index_name_for pointer in the stub block */
 
 /* ------------------------------------------------------------------ pool */
 
@@ -178,33 +179,46 @@ static int apply_pickup(uint8_t *base)
 
 /* ------------------------------------------------------------------ index */
 
+static const char *g_game_index;   /* the game's "info.arc" */
+static volatile LONG g_mounts;
+
+/* Index name for the folder being mounted: "info_uk.arc" for the main data (empty folder name), the
+   game's own for any other (the DLC is "dlc\dlc01\"). */
+static const char *index_name_for(const char *folder)
+{
+    const char *name = folder[0] == 0 ? INDEX_NEW : g_game_index;
+    if (InterlockedIncrement(&g_mounts) <= 8)
+        log_line("index    mount \"%s\" at %u ms: %s", folder, ms_since_start(), name);
+    return name;
+}
+
 /*
- * Stub called instead of the lea at exe+0x8ED281: r9 = "info_uk.arc" when the folder being mounted
- * ([rsi+0x28]) is "data/", the game's "info.arc" otherwise. Only r9 and the flags change, and the flags
- * are not read before the next compare there.
+ * Stub called instead of the lea at exe+0x8ED281 (rsi = mount object, folder at [rsi+0x28]; rsp is
+ * 16-byte aligned at the call site): r9 = index_name_for(folder). The volatile registers it clobbers are
+ * free there: rcx, rdx and r8 are set right after, and a call follows.
  */
 static int apply_index(uint8_t *base)
 {
     uint8_t *stub = alloc_near(base), *p, call[7];
-    uint64_t game_name = (uint64_t)(uintptr_t)(base + INDEX_NAME), own_name;
+    void *fn = (void *)index_name_for;
     int32_t d;
     if (!stub)
         return 0;
-    memcpy(stub + INDEX_STUB_NAME, INDEX_NEW, sizeof INDEX_NEW);
-    own_name = (uint64_t)(uintptr_t)(stub + INDEX_STUB_NAME);
+    g_game_index = (const char *)base + INDEX_NAME;
     p = stub;
-    p += unhex("49b9", p, 2);                    /* mov r9, "info.arc" */
-    memcpy(p, &game_name, 8);
-    p += 8;
-    p += unhex("817e2864617461", p, 7);          /* cmp dword [rsi+0x28], "data" */
-    p += unhex("7512", p, 2);                    /* jne .ret */
-    p += unhex("66817e2c2f00", p, 6);            /* cmp word [rsi+0x2c], "/\0" */
-    p += unhex("750a", p, 2);                    /* jne .ret */
-    p += unhex("49b9", p, 2);                    /* mov r9, "info_uk.arc" */
-    memcpy(p, &own_name, 8);
-    p += 8;
-    *p = 0xC3;                                   /* .ret: ret */
-    FlushInstructionCache(GetCurrentProcess(), stub, INDEX_STUB_NAME + sizeof INDEX_NEW);
+    p += unhex("4883ec28", p, 4);                /* sub rsp, 0x28 */
+    p += unhex("488d4e28", p, 4);                /* lea rcx, [rsi+0x28] */
+    *p++ = 0xFF;                                 /* call [rip+slot] */
+    *p++ = 0x15;
+    if (!rel32(p + 4, stub + INDEX_STUB_SLOT, &d))
+        return 0;
+    memcpy(p, &d, 4);
+    p += 4;
+    p += unhex("4883c428", p, 4);                /* add rsp, 0x28 */
+    p += unhex("4989c1", p, 3);                  /* mov r9, rax */
+    *p = 0xC3;                                   /* ret */
+    memcpy(stub + INDEX_STUB_SLOT, &fn, sizeof fn);
+    FlushInstructionCache(GetCurrentProcess(), stub, INDEX_STUB_SLOT + sizeof fn);
 
     call[0] = 0xE8;                              /* call stub; nop; nop */
     if (!rel32(base + INDEX_LEA + 5, stub, &d))
