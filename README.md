@@ -133,8 +133,7 @@ NieR Replicant ver.1.22474487139\
 ├─ NieR Replicant ver.1.22474487139.exe
 ├─ d3d11.dll                    Special K, якщо встановлений локально (див. нижче)
 ├─ d3d11.ini                    налаштування Special K
-├─ SK_Res\
-│  └─ LunarTear.dll             Lunar Tear, підключений у меню Special K (назва й тека довільні)
+├─ LunarTear.dll                Lunar Tear, підключений у меню Special K (назва й тека довільні)
 └─ LunarTear\
    └─ mods\                     моди Lunar Tear лишаються тут
       ├─ UkrainianTranslation\
@@ -179,10 +178,9 @@ NieR Replicant ver.1.22474487139\
 ├─ NieR Replicant ver.1.22474487139.exe
 ├─ d3d11.dll                    Special K (SpecialK64.dll під вільною назвою: d3d11.dll чи dxgi.dll)
 ├─ d3d11.ini                    налаштування Special K, з тією ж назвою, що й його DLL
-├─ SK_Res\                      .asi можна класти сюди або прямо в теку гри
-│  ├─ NierReplicantUA.asi       переклад
-│  ├─ NierReplicantGFX.asi      графіка
-│  └─ NierReplicantGFX.ini      налаштування графіки, поруч із NierReplicantGFX.asi
+├─ NierReplicantUA.asi          переклад
+├─ NierReplicantGFX.asi         графіка
+├─ NierReplicantGFX.ini         налаштування графіки, поруч із NierReplicantGFX.asi
 └─ data\
    ├─ ua.arc                    переклад, завжди в data гри
    └─ info_uk.arc               переклад, завжди в data гри
@@ -254,7 +252,7 @@ index    mount "dlc\dlc01\" at 829 ms: info.arc
 А так — лог графіки:
 
 ```
-NierReplicantGFX 1.0.0 by Swiftlyx, loaded at 508 ms after process start
+NierReplicantGFX 1.0.1 by Swiftlyx, loaded at 508 ms after process start
 ssaa     off (RenderScale = 1.0)
 shaders  waiting for D3D11CreateDevice (AO: NierReplicantGFX shader, strength 1.00; feedback blur removed, dither on)
 shaders  10-bit colour buffers created at 16 bits
@@ -273,6 +271,8 @@ shader   replaced: gen_ssao_mask_default_c -> NierReplicantGFX AO
   рядок `pool     skipped`: плагін завантажився пізніше, ніж гра прочитала текст. Для ASI поставте
   Load Order: Early, або перейдіть на Standalone: він завантажується найраніше.
 - **Зброя з DLC прозора** (Standalone, ASI). Так було у версіях до v1.0.2 — замініть файли новими.
+- **На екрані вводу імені текст тонкий, без смуги фону, а на «Так/Ні» немає курсора.** Так було з
+  NierReplicantGFX у версіях до v1.0.3 — замініть файли графіки новими.
 - **Інші моди перестали працювати.** Варіанти Standalone і ASI підставляють грі власний індекс
   архівів (`info_uk.arc`), тож моди, які теж підміняють файли гри через архіви Lunar Tear, разом із ними не
   працюватимуть. Ставте все разом через Lunar Tear.
@@ -463,10 +463,9 @@ Use one method per plugin. Extract the archives into the game folder, the one wi
     NieR Replicant ver.1.22474487139\
     ├─ d3d11.dll                    Special K (SpecialK64.dll under a free name: d3d11.dll or dxgi.dll)
     ├─ d3d11.ini                    Special K settings, named like its DLL
-    ├─ SK_Res\                      the .asi files may go here or straight into the game folder
-    │  ├─ NierReplicantUA.asi
-    │  ├─ NierReplicantGFX.asi
-    │  └─ NierReplicantGFX.ini      next to NierReplicantGFX.asi
+    ├─ NierReplicantUA.asi
+    ├─ NierReplicantGFX.asi
+    ├─ NierReplicantGFX.ini         next to NierReplicantGFX.asi
     └─ data\
        ├─ ua.arc                    always in the game's data
        └─ info_uk.arc               always in the game's data
@@ -486,6 +485,8 @@ means the plugin was not loaded: check the file layout above.
 - **Parts of the menus are empty, the game crashes on weapon stories.** The log says `pool     skipped`:
   the plugin loaded after the game read its text. Set Load Order to Early or use Standalone.
 - **DLC weapons are invisible** (Standalone, ASI): versions before v1.0.2 did that; update.
+- **The name entry screen has thin text, no background band and no cursor on Yes/No**: NierReplicantGFX
+  in versions before v1.0.3 did that; update.
 - **Other archive mods stopped working.** Standalone and ASI give the game their own archive index, so
   mods that replace game files through Lunar Tear archives do not combine with them; install everything
   through Lunar Tear.
