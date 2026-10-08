@@ -49,7 +49,7 @@
 
 | Спосіб | Переклад | Графіка |
 |---|---|---|
-| [Lunar Tear](https://github.com/ifa-ifa/Lunar-Tear) (має бути вже встановлений) | [UkrainianTranslation-LunarTear.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-LunarTear.zip) | [NierReplicantGFX-LunarTear.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-LunarTear.zip) |
+| [Lunar Tear](https://www.nexusmods.com/nierreplicant/mods/87) (має бути вже встановлений) | [UkrainianTranslation-LunarTear.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-LunarTear.zip) | [NierReplicantGFX-LunarTear.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-LunarTear.zip) |
 | Без завантажувача: гра сама завантажує `dinput8.dll` і `xinput9_1_0.dll` зі своєї теки | [UkrainianTranslation-Standalone.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-Standalone.zip) | [NierReplicantGFX-Standalone.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-Standalone.zip) |
 | ASI-завантажувач ([Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader) або [Special K](https://www.special-k.info/) з `When=Early`) | [UkrainianTranslation-ASI.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-ASI.zip) | [NierReplicantGFX-ASI.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-ASI.zip) |
 
@@ -181,7 +181,7 @@ Ready-to-use files are on the [Releases](https://github.com/Swiftlyx/nier-replic
 page, three archives per plugin, one per loading method. Pick one method per plugin and extract its
 archive into the game folder (where `NieR Replicant ver.1.22474487139.exe` is):
 
-- `*-LunarTear.zip`: a mod for [Lunar Tear](https://github.com/ifa-ifa/Lunar-Tear), which must be installed;
+- `*-LunarTear.zip`: a mod for [Lunar Tear](https://www.nexusmods.com/nierreplicant/mods/87), which must be installed;
 - `*-Standalone.zip`: no loader needed, the game loads `dinput8.dll` and `xinput9_1_0.dll` from its
   folder. On Steam Deck or Proton add `WINEDLLOVERRIDES="dinput8,xinput9_1_0=n,b" %command%` to the
   launch options;
