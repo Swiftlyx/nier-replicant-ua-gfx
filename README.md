@@ -9,7 +9,8 @@
 зміною плагін перевіряє, що код на цьому місці такий самий, як у Steam-версії. Якщо ні (інша версія
 гри або інший мод), зміна пропускається, а причина записується в лог поруч із DLL.
 
-Автор: Swiftlyx. Ліцензія: [MIT](LICENSE). *English below.*
+Автор: Swiftlyx. Ліцензія коду: [MIT](LICENSE), умови для файлів перекладу — у розділі «Поширення».
+*English below.*
 
 ## NierReplicantUA
 
@@ -23,7 +24,8 @@
 - читає індекс архівів із `data\info_uk.arc`, тож оригінальний `data\info.arc` не треба замінювати.
 
 Тексти, шрифт і текстури перекладу лежать в архіві `ua.arc`, який входить у готові файли перекладу
-разом із плагіном (див. «Встановлення»).
+разом із плагіном (див. «Встановлення»). Це ШІ-переклад: текст переклала модель Claude Opus 5.5
+(Extra high) від Anthropic, терміни, стиль, правки й перевірка в грі — Swiftlyx.
 
 ## NierReplicantGFX
 
@@ -104,6 +106,14 @@ NierReplicantGFX перехоплює `D3D11CreateDevice` в імпорті гр
 Обидві DLL експортують `LunarTearPluginInit`, щоб їх завантажував Lunar Tear, але його Plugin API не
 використовують.
 
+## Поширення
+
+- Код плагінів поширюється за ліцензією [MIT](LICENSE): копії мають зберігати рядок
+  `Copyright (c) 2026 Swiftlyx` і текст ліцензії.
+- Файли перекладу з релізів (`ua.arc`, `info.arc`, `info_uk.arc`) під MIT не підпадають. Поширювати їх,
+  зокрема на інших сайтах і в збірках модів, можна лише з обов'язковим зазначенням автора (Swiftlyx) і
+  посиланням на цей репозиторій або сторінку мода.
+
 ## Збірка
 
 Потрібні MSVC Build Tools 2022 (x64), а для тестів і генераторів ще Python 3.
@@ -134,7 +144,7 @@ Both change the game's code in memory at startup and leave the game files alone.
 plugin checks that the code at that place matches the Steam version. If it does not (another game
 version or another mod), the change is skipped and the reason goes to the log next to the DLL.
 
-Author: Swiftlyx. License: MIT.
+Author: Swiftlyx. Code license: MIT; see Redistribution for the translation files.
 
 ### NierReplicantUA
 
@@ -149,7 +159,8 @@ The plugin:
 - reads the archive index from `data\info_uk.arc`, so the original `data\info.arc` stays as it is.
 
 The translation itself (text, font, textures) is in `ua.arc`, which comes with the plugin in the
-translation archives.
+translation archives. It is an AI translation: the text was translated by Claude Opus 5.5 (Extra high)
+by Anthropic; terminology, style, corrections and in-game testing by Swiftlyx.
 
 ### NierReplicantGFX
 
@@ -178,6 +189,13 @@ archive into the game folder (where `NieR Replicant ver.1.22474487139.exe` is):
 
 For the translation, choose English as the text language in the game settings: the translation takes
 the English slot.
+
+### Redistribution
+
+The plugin code is MIT licensed: copies must keep `Copyright (c) 2026 Swiftlyx` and the license text.
+The translation files in the releases (`ua.arc`, `info.arc`, `info_uk.arc`) are not covered by the MIT
+license. They may be redistributed, including on other sites and in modpacks, only with credit to
+Swiftlyx and a link to this repository or the mod page.
 
 ### Building
 
