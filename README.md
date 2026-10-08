@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="Ніер Реплікант вер.1.22474487139..." width="760">
+</p>
+
 # NieR Replicant ver.1.22474487139: ліміти тексту й графіка
 
 Два плагіни для Steam-версії NieR Replicant ver.1.22474487139:
