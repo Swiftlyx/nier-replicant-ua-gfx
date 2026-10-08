@@ -339,10 +339,11 @@ static HRESULT STDMETHODCALLTYPE hook_create_cs(void *device, const void *code, 
  *
  * The game draws the frame into 10-bit linear R10G10B10A2_UNORM buffers, and the final pass converts it
  * to sRGB. Near black one 10-bit step is about 3 levels of the 8-bit output, so dark glows and gradients
- * show rings. Default-usage 10-bit textures without initial data are created as R16G16B16A16 (FLOAT, or
- * TYPELESS for TYPELESS); views that ask for R10G10B10A2_UNORM on such a texture get R16G16B16A16_FLOAT.
- * Shaders read and write floats either way, and copies stay between textures of the same format because
- * all of them are converted.
+ * show rings. Default-usage 10-bit textures without initial data are created as R16G16B16A16 (UNORM, or
+ * TYPELESS for TYPELESS); views that ask for R10G10B10A2_UNORM on such a texture get R16G16B16A16_UNORM.
+ * UNORM keeps the 0..1 clamp of the original format: some passes write values below zero that the game
+ * expects to be clamped (with a FLOAT buffer the name entry screen lost its background and half of its
+ * text). Copies stay between textures of the same format because all of them are converted.
  */
 
 static int is_10bit(DXGI_FORMAT f)
@@ -362,7 +363,7 @@ static HRESULT STDMETHODCALLTYPE hook_create_texture2d(ID3D11Device *device, con
         !desc->CPUAccessFlags && !(desc->MiscFlags & keep)) {
         D3D11_TEXTURE2D_DESC d = *desc;
         HRESULT hr;
-        d.Format = desc->Format == DXGI_FORMAT_R10G10B10A2_UNORM ? DXGI_FORMAT_R16G16B16A16_FLOAT
+        d.Format = desc->Format == DXGI_FORMAT_R10G10B10A2_UNORM ? DXGI_FORMAT_R16G16B16A16_UNORM
                                                                  : DXGI_FORMAT_R16G16B16A16_TYPELESS;
         hr = create(device, &d, init, texture);
         if (SUCCEEDED(hr)) {
@@ -385,7 +386,7 @@ static int upgraded(ID3D11Resource *resource)
     if (dim != D3D11_RESOURCE_DIMENSION_TEXTURE2D)
         return 0;
     ID3D11Texture2D_GetDesc((ID3D11Texture2D *)resource, &d);
-    return d.Format == DXGI_FORMAT_R16G16B16A16_FLOAT || d.Format == DXGI_FORMAT_R16G16B16A16_TYPELESS;
+    return d.Format == DXGI_FORMAT_R16G16B16A16_UNORM || d.Format == DXGI_FORMAT_R16G16B16A16_TYPELESS;
 }
 
 static HRESULT STDMETHODCALLTYPE hook_create_srv(ID3D11Device *device, ID3D11Resource *resource,
@@ -397,7 +398,7 @@ static HRESULT STDMETHODCALLTYPE hook_create_srv(ID3D11Device *device, ID3D11Res
         return E_FAIL;
     if (desc && desc->Format == DXGI_FORMAT_R10G10B10A2_UNORM && upgraded(resource)) {
         D3D11_SHADER_RESOURCE_VIEW_DESC d = *desc;
-        d.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+        d.Format = DXGI_FORMAT_R16G16B16A16_UNORM;
         return create(device, resource, &d, view);
     }
     return create(device, resource, desc, view);
@@ -412,7 +413,7 @@ static HRESULT STDMETHODCALLTYPE hook_create_uav(ID3D11Device *device, ID3D11Res
         return E_FAIL;
     if (desc && desc->Format == DXGI_FORMAT_R10G10B10A2_UNORM && upgraded(resource)) {
         D3D11_UNORDERED_ACCESS_VIEW_DESC d = *desc;
-        d.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+        d.Format = DXGI_FORMAT_R16G16B16A16_UNORM;
         return create(device, resource, &d, view);
     }
     return create(device, resource, desc, view);
@@ -427,7 +428,7 @@ static HRESULT STDMETHODCALLTYPE hook_create_rtv(ID3D11Device *device, ID3D11Res
         return E_FAIL;
     if (desc && desc->Format == DXGI_FORMAT_R10G10B10A2_UNORM && upgraded(resource)) {
         D3D11_RENDER_TARGET_VIEW_DESC d = *desc;
-        d.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+        d.Format = DXGI_FORMAT_R16G16B16A16_UNORM;
         return create(device, resource, &d, view);
     }
     return create(device, resource, desc, view);

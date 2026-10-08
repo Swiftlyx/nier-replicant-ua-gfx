@@ -321,8 +321,8 @@ static void test_precision(ID3D11Device *dev)
     ID3D11RenderTargetView *rtv = NULL;
     ID3D11ShaderResourceView *srv = NULL;
     printf("4. 10-bit colour buffers at 16 bits\n");
-    check(texture_format(dev, DXGI_FORMAT_R10G10B10A2_UNORM, 0) == DXGI_FORMAT_R16G16B16A16_FLOAT,
-          "R10G10B10A2_UNORM render target created as R16G16B16A16_FLOAT");
+    check(texture_format(dev, DXGI_FORMAT_R10G10B10A2_UNORM, 0) == DXGI_FORMAT_R16G16B16A16_UNORM,
+          "R10G10B10A2_UNORM render target created as R16G16B16A16_UNORM");
     check(texture_format(dev, DXGI_FORMAT_R10G10B10A2_TYPELESS, 0) == DXGI_FORMAT_R16G16B16A16_TYPELESS,
           "R10G10B10A2_TYPELESS created as R16G16B16A16_TYPELESS");
     check(texture_format(dev, DXGI_FORMAT_R10G10B10A2_UNORM, 1) == DXGI_FORMAT_R10G10B10A2_UNORM,
