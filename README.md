@@ -44,46 +44,83 @@
 ## Встановлення
 
 Готові файли лежать на сторінці [Releases](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest).
-Для кожного плагіна там три архіви, по одному на спосіб підключення. Оберіть один спосіб і розпакуйте
-архів у теку гри, де лежить `NieR Replicant ver.1.22474487139.exe`.
+Для кожного плагіна там три архіви, по одному на спосіб підключення:
 
 | Спосіб | Переклад | Графіка |
 |---|---|---|
-| [Lunar Tear](https://www.nexusmods.com/nierreplicant/mods/87) (має бути вже встановлений) | [UkrainianTranslation-LunarTear.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-LunarTear.zip) | [NierReplicantGFX-LunarTear.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-LunarTear.zip) |
-| Без завантажувача: гра сама завантажує `dinput8.dll` і `xinput9_1_0.dll` зі своєї теки | [UkrainianTranslation-Standalone.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-Standalone.zip) | [NierReplicantGFX-Standalone.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-Standalone.zip) |
-| ASI-завантажувач: Ultimate ASI Loader або Special K (див. нижче) | [UkrainianTranslation-ASI.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-ASI.zip) | [NierReplicantGFX-ASI.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-ASI.zip) |
+| Standalone | [UkrainianTranslation-Standalone.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-Standalone.zip) | [NierReplicantGFX-Standalone.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-Standalone.zip) |
+| Lunar Tear | [UkrainianTranslation-LunarTear.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-LunarTear.zip) | [NierReplicantGFX-LunarTear.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-LunarTear.zip) |
+| ASI | [UkrainianTranslation-ASI.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-ASI.zip) | [NierReplicantGFX-ASI.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-ASI.zip) |
 
-У Steam Deck або Proton для способу без завантажувача додайте в параметри запуску гри
+### Який спосіб обрати
+
+- **Standalone** — якщо вам потрібні лише ці моди. Сторонні програми не потрібні, а плагін завантажується
+  найраніше.
+- **Lunar Tear** — якщо ви вже ставите через нього інші моди. Він об'єднує архіви всіх модів, тож вони не
+  заважають один одному.
+- **ASI** — якщо у вас уже стоїть Ultimate ASI Loader або Special K, наприклад для інших модів.
+
+Для кожного плагіна оберіть один спосіб і не змішуйте їх: переклад, скажімо, через Standalone, а графіку
+через Lunar Tear можна, але переклад двома способами одночасно — ні.
+
+Теку гри в Steam відкриває пункт контекстного меню гри **Керування → Переглянути локальні файли**
+(Manage → Browse local files). У ній лежить `NieR Replicant ver.1.22474487139.exe`.
+
+### Standalone
+
+1. Розпакуйте `UkrainianTranslation-Standalone.zip` і, якщо потрібна графіка,
+   `NierReplicantGFX-Standalone.zip` у теку гри.
+2. Поруч із `NieR Replicant ver.1.22474487139.exe` мають опинитися `dinput8.dll` і файли `data\ua.arc`,
+   `data\info_uk.arc` (переклад), а також `xinput9_1_0.dll` і `NierReplicantGFX.ini` (графіка). Гра сама
+   завантажує DLL з такими назвами зі своєї теки.
+
+У Steam Deck або Proton додайте в параметри запуску гри
 `WINEDLLOVERRIDES="dinput8,xinput9_1_0=n,b" %command%`.
+
+### Lunar Tear
+
+1. Встановіть [Lunar Tear](https://www.nexusmods.com/nierreplicant/mods/87) за інструкцією з його сторінки.
+2. Розпакуйте `UkrainianTranslation-LunarTear.zip` і, якщо потрібна графіка, `NierReplicantGFX-LunarTear.zip`
+   у теку гри. В архівах уже є шлях `LunarTear\mods\…`, тож моди самі опиняться в
+   `LunarTear\mods\UkrainianTranslation` і `LunarTear\mods\NierReplicantGFX`. Якщо тек `LunarTear` чи `mods`
+   ще немає, вони створяться під час розпакування.
+
+Lunar Tear можна завантажувати й через Special K: додайте його в меню Special K як плагін (див. нижче) з
+**Load Order: Early**. Він має завантажитися раніше, ніж гра відкриє свої архіви. Якщо в
+`LunarTear\lunartear.log` є рядок «VFS hook missed», він завантажився запізно, і архіви модів, зокрема
+переклад, гра не побачить.
 
 ### Ultimate ASI Loader і Special K
 
 Гра 64-бітна й працює на DirectX 11, тож потрібні 64-бітні (x64) версії завантажувачів. Спершу
-розпакуйте в теку гри архіви `*-ASI.zip`.
+розпакуйте в теку гри архіви `*-ASI.zip`. Файли `data\ua.arc` і `data\info_uk.arc` мають лишатися в теці
+`data` гри, а `NierReplicantGFX.ini` — поруч із `NierReplicantGFX.asi`.
+
+Завантажувач кладуть у теку гри під назвою бібліотеки, яку гра завантажує сама під час запуску: Windows
+бере файл із теки гри замість системного. Для NieR Replicant підходять, зокрема, `winmm.dll`, `d3d11.dll`,
+`dxgi.dll` і `dinput8.dll` (DirectX 11 і функції, які гра імпортує). Конкретна назва неважлива, якщо
+завантажувач її підтримує і її не займає інший мод: `dinput8.dll` і `xinput9_1_0.dll` — наші
+Standalone-файли, `dxgi.dll` — Lunar Tear.
 
 **[Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader)**
 
 1. На сторінці [релізів](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases) завантажте
    `Ultimate-ASI-Loader_x64.zip`.
-2. Покладіть DLL з архіву в теку гри й назвіть її `winmm.dll`. Гра сама завантажує файл із такою назвою,
-   і її не займають інші моди: `dinput8.dll` і `xinput9_1_0.dll` — наші файли для способу без
-   завантажувача, `dxgi.dll` — Lunar Tear, `dxgi.dll` чи `d3d11.dll` — Special K.
-3. Файли `.asi` можна лишити в теці гри або перенести в підтеку `scripts` чи `plugins`. Файли
-   `data\ua.arc` і `data\info_uk.arc` мають лишатися в теці `data` гри, а `NierReplicantGFX.ini` — поруч
-   із `NierReplicantGFX.asi`.
+2. Покладіть DLL з архіву в теку гри під вільною назвою, наприклад `winmm.dll` або `d3d11.dll`.
+3. Файли `.asi` можна лишити в теці гри або перенести в підтеку `scripts` чи `plugins`.
 
 **[Special K](https://www.special-k.info/)** ([GitHub](https://github.com/SpecialKO/SpecialK))
 
 1. Встановіть Special K із сайту або з [релізів на GitHub](https://github.com/SpecialKO/SpecialK/releases).
    Найпростіше — глобальна ін'єкція через програму Special K (SKIF): запустіть її службу, потім гру. Для
-   локального встановлення покладіть `SpecialK64.dll` у теку гри під назвою `d3d11.dll`: назву `dxgi.dll`
-   займає Lunar Tear.
+   локального встановлення покладіть `SpecialK64.dll` у теку гри під вільною назвою для DirectX 11:
+   `d3d11.dll` або `dxgi.dll`, якщо її не займає Lunar Tear.
 2. Запустіть гру й відкрийте меню Special K (Ctrl + Shift + Backspace): **Plug-Ins → Third-Party →
    Add Plug-In**. Додайте кожен `.asi` і поставте йому **Load Order: Early**. Плагіни запрацюють з
    наступного запуску гри.
 3. Або те саме вручну: допишіть у `SpecialK.ini` профілю гри (`Документи\My Mods\SpecialK\Profiles\…`)
-   при глобальній ін'єкції чи в `d3d11.ini` у теці гри при локальному встановленні. У `Filename` —
-   повний шлях до файлу:
+   при глобальній ін'єкції чи в ini поруч із DLL Special K (`d3d11.ini`, `dxgi.ini`) при локальному
+   встановленні. У `Filename` — повний шлях до файлу:
 
    ```ini
    [Import.NierReplicantUA]
@@ -99,7 +136,10 @@
    Filename=C:\Program Files (x86)\Steam\steamapps\common\NieR Replicant ver.1.22474487139\NierReplicantGFX.asi
    ```
 
-   `When=Early` обов'язковий для перекладу: плагін має змінити гру раніше, ніж вона прочитає текст.
+   Раннє завантаження (Early) обов'язкове для перекладу: плагін має змінити гру раніше, ніж вона прочитає
+   текст.
+
+### Після встановлення
 
 Щоб увімкнути переклад, оберіть у налаштуваннях гри мову тексту English. Переклад займає її місце,
 тому в списку мов він так і називається: English.
@@ -223,23 +263,35 @@ Settings are in `NierReplicantGFX.ini` next to the DLL, each one described in th
 ### Installation
 
 Ready-to-use files are on the [Releases](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest)
-page, three archives per plugin, one per loading method. Pick one method per plugin and extract its
-archive into the game folder (where `NieR Replicant ver.1.22474487139.exe` is):
+page, three archives per plugin, one per loading method. Which one to pick:
 
-- `*-LunarTear.zip`: a mod for [Lunar Tear](https://www.nexusmods.com/nierreplicant/mods/87), which must be installed;
-- `*-Standalone.zip`: no loader needed, the game loads `dinput8.dll` and `xinput9_1_0.dll` from its
-  folder. On Steam Deck or Proton add `WINEDLLOVERRIDES="dinput8,xinput9_1_0=n,b" %command%` to the
-  launch options;
-- `*-ASI.zip`: for an ASI loader. The game is 64-bit DirectX 11, so use the x64 loaders:
+- **Standalone**, if you only want these mods: no third-party tools, and the plugin loads first;
+- **Lunar Tear**, if you already install other mods with it: it merges the archives of all mods;
+- **ASI**, if you already use Ultimate ASI Loader or Special K.
+
+Use one method per plugin. The game folder is the one with `NieR Replicant ver.1.22474487139.exe`
+(in Steam: Manage → Browse local files).
+
+- **Standalone:** extract `*-Standalone.zip` into the game folder. `dinput8.dll` with `data\ua.arc` and
+  `data\info_uk.arc` (translation), and `xinput9_1_0.dll` with `NierReplicantGFX.ini` (graphics) end up
+  next to the exe; the game loads these DLLs by itself. On Steam Deck or Proton add
+  `WINEDLLOVERRIDES="dinput8,xinput9_1_0=n,b" %command%` to the launch options.
+- **Lunar Tear:** install [Lunar Tear](https://www.nexusmods.com/nierreplicant/mods/87), then extract
+  `*-LunarTear.zip` into the game folder; the archives already contain `LunarTear\mods\…`, so the folders
+  are created if missing. Lunar Tear can also be loaded through Special K with Load Order Early; if
+  `LunarTear\lunartear.log` says "VFS hook missed", it loaded too late and archive mods are not applied.
+- **ASI:** extract `*-ASI.zip` into the game folder (`data\` files stay in the game's `data` folder,
+  `NierReplicantGFX.ini` next to `NierReplicantGFX.asi`). The game is 64-bit DirectX 11, so use x64
+  loaders, named after a library the game loads at startup, such as `winmm.dll`, `d3d11.dll`, `dxgi.dll`
+  or `dinput8.dll`. Any such name works if the loader supports it and no other mod uses it
+  (`dinput8.dll` and `xinput9_1_0.dll` are the Standalone files, `dxgi.dll` is Lunar Tear).
   - [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader): put the DLL from
-    `Ultimate-ASI-Loader_x64.zip` into the game folder as `winmm.dll` (the game loads it, and no other mod
-    here uses that name). `data\ua.arc` and `data\info_uk.arc` stay in the game's `data` folder, and
-    `NierReplicantGFX.ini` next to `NierReplicantGFX.asi`;
+    `Ultimate-ASI-Loader_x64.zip` into the game folder, for example as `winmm.dll` or `d3d11.dll`;
   - [Special K](https://www.special-k.info/) ([GitHub](https://github.com/SpecialKO/SpecialK)): in the
     Special K menu (Ctrl + Shift + Backspace) open Plug-Ins → Third-Party → Add Plug-In, add each `.asi`
     and set its Load Order to Early; it takes effect on the next start. Or add an
     `[Import.NierReplicantUA]` section (and the same for GFX) to `SpecialK.ini` of the game profile or to
-    `d3d11.ini` of a local install, with `Architecture=x64`, `Role=ThirdParty`, `When=Early` and the full
+    the ini of a local install, with `Architecture=x64`, `Role=ThirdParty`, `When=Early` and the full
     path in `Filename`. Early loading is required for the translation.
 
 For the translation, choose English as the text language in the game settings: the translation takes
