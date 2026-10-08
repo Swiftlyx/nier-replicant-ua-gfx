@@ -56,6 +56,34 @@ static void check_applied(uint8_t *base)
     check(call_target(stub + 39) == base + 0x7BAE0, "pickup stub: jmp snprintf");
 }
 
+/* thunk(obj, stub): rsi = obj, call stub, return r9 (the index name the mount function would use) */
+static const char *index_name(uint8_t *stub, const char *folder)
+{
+    static const uint8_t code[] = {0x56, 0x48, 0x89, 0xCE, 0xFF, 0xD2, 0x4C, 0x89, 0xC8, 0x5E, 0xC3};
+    typedef const char *(*Thunk_t)(uint8_t *, uint8_t *);
+    static uint8_t *thunk;
+    static uint8_t obj[0x80];
+    if (!thunk) {
+        thunk = VirtualAlloc(NULL, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+        memcpy(thunk, code, sizeof code);
+    }
+    memset(obj, 0, sizeof obj);
+    strcpy_s((char *)obj + 0x28, 0x40, folder);
+    return ((Thunk_t)thunk)(obj, stub);
+}
+
+static void check_index(uint8_t *base)
+{
+    const char *game_name = (const char *)base + 0xD07728;
+    uint8_t *stub = call_target(base + 0x8ED281);
+    check(base[0x8ED281] == 0xE8 && bytes_are(base + 0x8ED286, "9090"), "index: lea at 0x8ED281 -> call stub; nop; nop");
+    check(strcmp(index_name(stub, "data/"), "info_uk.arc") == 0, "index stub: data/ -> info_uk.arc");
+    check(index_name(stub, "dlc/dlc01/") == game_name, "index stub: dlc/dlc01/ -> the game's info.arc");
+    check(index_name(stub, "") == game_name && index_name(stub, "data") == game_name &&
+              index_name(stub, "database/") == game_name, "index stub: \"\", data, database/ -> the game's info.arc");
+    check(memcmp(game_name, "info.arc\0\0\0\0", 12) == 0, "index: \"info.arc\" and the empty prefix at 0xD07731 unchanged");
+}
+
 int wmain(int argc, wchar_t **argv)
 {
     wchar_t dir_with[MAX_PATH], dir_without[MAX_PATH], path[MAX_PATH], temp[MAX_PATH];
@@ -105,10 +133,7 @@ int wmain(int argc, wchar_t **argv)
     r = apply(base, dir_with);
     printf("  result 0x%x\n", r);
     check((r & 0x1F) == 0x1F && !(r >> 16), "all five applied");
-    check(bytes_are(base + 0x8ED281, "4c8d0d") && strcmp((char *)lea_target(base + 0x8ED281), "info_uk.arc") == 0,
-          "index: lea r9 at 0x8ED281 points to \"info_uk.arc\"");
-    check(memcmp(base + 0xD07728, "info.arc\0\0\0\0", 12) == 0,
-          "index: \"info.arc\" and the empty string at 0xD07731 (used by 0x8ECBF3) unchanged");
+    check_index(base);
     FreeLibrary((HMODULE)base);
 
     printf("3. original exe, text_common already parsed\n");

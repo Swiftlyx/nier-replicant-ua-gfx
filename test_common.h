@@ -39,14 +39,6 @@ static uint8_t *call_target(uint8_t *site)
     return site + 5 + d;
 }
 
-/* Target of the rip-relative lea (REX, 8D, modrm, disp32) at `site`. */
-static uint8_t *lea_target(uint8_t *site)
-{
-    int32_t d;
-    memcpy(&d, site + 3, 4);
-    return site + 7 + d;
-}
-
 static int summary(void)
 {
     printf(failures ? "\n%d check(s) FAILED\n" : "\nall checks passed\n", failures);

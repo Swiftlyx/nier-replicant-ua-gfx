@@ -22,10 +22,11 @@
  *            instead of a 32-byte temporary.
  *   talker   The talker_name.tnd loader keeps speaker names longer than 31 bytes.
  *   index    When data\info_uk.arc exists, the game opens it instead of data\info.arc, so the original
- *            index stays as it is. The lea at exe+0x8ED281 that passes "info.arc" (exe+0xD07728) to the
- *            index path formatting points to a copy of "info_uk.arc" near the game instead. The string
- *            itself must stay: the zero bytes after it are shared with other code (exe+0x8ECBF3 passes
- *            exe+0xD07731 to the archive loader as an empty string).
+ *            index stays as it is. exe+0x8ED1F0 mounts a folder of archives (data/, dlc/dlc01/; the
+ *            folder is copied to [rsi+0x28]) and opens prefix + "info.arc" there, the prefix being the
+ *            empty string at exe+0xD07731 right after "info.arc" (exe+0xD07728). The lea that loads the
+ *            name (exe+0x8ED281) becomes a call to a stub that picks "info_uk.arc" for data/ only; the
+ *            DLC keeps its own info.arc, and the string bytes stay as they are.
  * Results go to NierReplicantUA.log next to the DLL.
  */
 #include <stdio.h>
@@ -99,10 +100,11 @@ static const char PICKUP_STUB[] =
     "4881c280000000"; /* add rdx, 0x80; followed by jmp snprintf */
 
 static const Site INDEX_SITES[] = {
-    {INDEX_LEA, "4c8d0da0a44100", NULL},       /* lea r9, [rip+0x41a4a0] -> exe+0xD07728; written by apply_index() */
+    {INDEX_LEA, "4c8d0da0a44100", NULL},       /* lea r9, [rip+0x41a4a0] -> exe+0xD07728; replaced by apply_index() */
     {INDEX_NAME, "696e666f2e61726300", NULL},  /* "info.arc" */
 };
 static const char INDEX_NEW[] = "info_uk.arc";
+#define INDEX_STUB_NAME 0x40                   /* offset of INDEX_NEW in the stub block */
 
 /* ------------------------------------------------------------------ pool */
 
@@ -176,17 +178,40 @@ static int apply_pickup(uint8_t *base)
 
 /* ------------------------------------------------------------------ index */
 
-/* Points the lea at exe+0x8ED281 to a copy of "info_uk.arc" near the game. */
+/*
+ * Stub called instead of the lea at exe+0x8ED281: r9 = "info_uk.arc" when the folder being mounted
+ * ([rsi+0x28]) is "data/", the game's "info.arc" otherwise. Only r9 and the flags change, and the flags
+ * are not read before the next compare there.
+ */
 static int apply_index(uint8_t *base)
 {
-    uint8_t *name = alloc_near(base);
+    uint8_t *stub = alloc_near(base), *p, call[7];
+    uint64_t game_name = (uint64_t)(uintptr_t)(base + INDEX_NAME), own_name;
     int32_t d;
-    if (!name)
+    if (!stub)
         return 0;
-    memcpy(name, INDEX_NEW, sizeof INDEX_NEW);
-    if (!rel32(base + INDEX_LEA + 7, name, &d))
+    memcpy(stub + INDEX_STUB_NAME, INDEX_NEW, sizeof INDEX_NEW);
+    own_name = (uint64_t)(uintptr_t)(stub + INDEX_STUB_NAME);
+    p = stub;
+    p += unhex("49b9", p, 2);                    /* mov r9, "info.arc" */
+    memcpy(p, &game_name, 8);
+    p += 8;
+    p += unhex("817e2864617461", p, 7);          /* cmp dword [rsi+0x28], "data" */
+    p += unhex("7512", p, 2);                    /* jne .ret */
+    p += unhex("66817e2c2f00", p, 6);            /* cmp word [rsi+0x2c], "/\0" */
+    p += unhex("750a", p, 2);                    /* jne .ret */
+    p += unhex("49b9", p, 2);                    /* mov r9, "info_uk.arc" */
+    memcpy(p, &own_name, 8);
+    p += 8;
+    *p = 0xC3;                                   /* .ret: ret */
+    FlushInstructionCache(GetCurrentProcess(), stub, INDEX_STUB_NAME + sizeof INDEX_NEW);
+
+    call[0] = 0xE8;                              /* call stub; nop; nop */
+    if (!rel32(base + INDEX_LEA + 5, stub, &d))
         return 0;
-    return write_bytes(base + INDEX_LEA + 3, &d, 4);
+    memcpy(call + 1, &d, 4);
+    call[5] = call[6] = 0x90;
+    return write_bytes(base + INDEX_LEA, call, sizeof call);
 }
 
 /* ------------------------------------------------------------------ entry points */
