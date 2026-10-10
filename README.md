@@ -34,8 +34,8 @@
 ## NierReplicantGFX
 
 - **Ambient occlusion.** Затінення рахує власний шейдер плагіна замість ігрового. Сила тіні та сама,
-  але немає візерунка, що рухається разом із камерою, і тінь не блідне біля країв екрана та навколо
-  персонажів.
+  але немає візерунка, що рухається разом із камерою, а біля країв екрана та навколо персонажів тінь
+  блідне набагато менш помітно. Візерунок видно лише в русі й там, де тіней багато.
 - **Без шлейфу кадрів.** Гра змішує кадр із попередніми (feedback blur), найпомітніше під час перекиду.
   Плагін це вимикає.
 - **Без кілець на світінні.** Гра тримає кадр у 10-бітних буферах, тож світіння й темні переходи йдуть
@@ -47,10 +47,36 @@
 поруч із DLL графіки: у теці гри (Standalone), у `LunarTear\mods\NierReplicantGFX` (Lunar Tear) або поруч
 із `NierReplicantGFX.asi` (ASI). Зміни діють після перезапуску гри.
 
+### Як це виглядає
+
+Тестова сцена, прогнана через справжній шейдер затінення гри й через шейдер плагіна: не кадри з гри, а
+пояснення того, що саме змінює плагін. Ліворуч гра, праворуч NierReplicantGFX.
+
+![Затінення під час повороту камери](docs/demo_ao_rotation.gif)
+
+Камера повертається, як правим стіком. Плями в затіненні гри стоять на місці екрана, а сцена під ними
+рухається, тож здається, що по тінях за камерою пливе візерунок. Видно це лише в русі й там, де тіней
+багато, тому на знімках екрана різниця помітна слабше, ніж у грі.
+
+![Шум, який повертає напрямки пошуку тіней](docs/ao_pattern_noise.png)
+
+Звідки береться візерунок: гра повертає напрямки, в яких шукає тіні, на свій кут для кожного пікселя.
+Цей шум надто грубий для розмиття гри. Плагін використовує візерунок 4×4 пікселі, який розмиття прибирає.
+
+![Тьмяне світіння: 10 біт без дизерингу проти 16 біт із дизерингом](docs/demo_glow_banding.png)
+
+Тьмяне світіння в темряві: у 10 бітах біля чорного видно кільця, у 16 бітах із дизерингом перехід плавний.
+Нижній ряд — те саме з яскравістю ×6.
+
+![Увесь кадр і лише затінення](docs/demo_frame.png)
+
+Увесь кадр (угорі) і лише затінення з посиленим контрастом (унизу); праворуч власне затінення плагіна,
+`RenderScale = 2.0` і дизеринг.
+
 ## Встановлення
 
 Готові файли лежать на сторінці [Releases](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest).
-Для кожного плагіна там три архіви, по одному на спосіб підключення:
+Для кожного плагіна там три архіви, по одному на спосіб встановлення:
 
 | Спосіб | Переклад | Графіка |
 |---|---|---|
@@ -71,6 +97,10 @@
 
 Для кожного плагіна оберіть один спосіб і не змішуйте їх: переклад, скажімо, через Standalone, а графіку
 через Lunar Tear можна, але переклад двома способами одночасно — ні.
+
+Самі завантажувачі можна поєднувати: Special K підключає Lunar Tear чи файли `.asi` як плагіни, а Ultimate
+ASI Loader працює поруч із Lunar Tear, якщо в них різні назви файлів. Головне, щоб кожна DLL мала свою
+вільну назву.
 
 Усі архіви розпаковуються в теку гри, де лежить `NieR Replicant ver.1.22474487139.exe`. У Steam її відкриває
 пункт контекстного меню гри **Керування → Переглянути локальні файли** (Manage → Browse local files).
@@ -101,7 +131,8 @@
 1. Встановіть [Lunar Tear](https://www.nexusmods.com/nierreplicant/mods/87) за інструкцією з його сторінки.
 2. Розпакуйте `UkrainianTranslation-LunarTear.zip` і, якщо потрібна графіка, `NierReplicantGFX-LunarTear.zip`
    у теку гри. В архівах уже є шлях `LunarTear\mods\…`, тож моди самі опиняться на місці. Якщо тек
-   `LunarTear` чи `mods` ще немає, вони створяться під час розпакування:
+   `LunarTear` чи `mods` ще немає, вони створяться під час розпакування; якщо ні, створіть їх самі й
+   покладіть туди файли з архівів:
 
    ```
    NieR Replicant ver.1.22474487139\
@@ -273,8 +304,14 @@ shader   replaced: gen_ssao_mask_default_c -> NierReplicantGFX AO
 - **Інші моди перестали працювати.** Варіанти Standalone і ASI підставляють грі власний індекс
   архівів (`info_uk.arc`), тож моди, які теж підміняють файли гри через архіви Lunar Tear, разом із ними не
   працюватимуть. Ставте все разом через Lunar Tear.
-- **Антивірус позначає `dxgi.dll`.** У цих архівах такого файлу немає: `dxgi.dll` у теці гри — це Lunar Tear
-  або Special K. Завантажуйте їх лише з офіційних сторінок. Standalone обходиться без сторонніх DLL.
+- **Плагін не завантажується, лога немає.** Windows може заблокувати файли, завантажені з інтернету.
+  Відкрийте властивості DLL чи `.asi` (а також Lunar Tear, Special K чи ASI Loader, якщо ставите їх): якщо
+  внизу вкладки «Загальні» написано, що файл отримано з іншого комп'ютера, поставте позначку
+  «Розблокувати» й натисніть OK. Простіше розблокувати сам архів ще до розпакування: тоді розблоковані
+  будуть усі файли з нього.
+- **Антивірус блокує чи видаляє DLL.** Плагіни, Lunar Tear, Special K та ASI Loader — бібліотеки (DLL), які
+  гра завантажує в себе, тож антивірус може помилково вважати їх підозрілими. Додайте теку гри до винятків
+  і поверніть файли з карантину. Завантажуйте все лише з офіційних сторінок.
 - **Гра оновилася або Steam перевірив файли.** Перевірка файлів ці моди не прибирає, бо вони не замінюють
   файлів гри. Якщо оновлення змінить код гри, плагіни нічого не чіпатимуть і напишуть у лог `skipped`; тоді
   потрібна нова версія модів.
@@ -370,8 +407,8 @@ by Anthropic; terminology, style, corrections and in-game testing by Swiftlyx.
 ### NierReplicantGFX
 
 - **Ambient occlusion.** The plugin's own shader replaces the game's. The strength is the same, but
-  there is no pattern moving with the camera, and shadows do not fade near the screen edges or around
-  characters.
+  there is no pattern moving with the camera, and shadows fade much less near the screen edges and
+  around characters. The pattern only shows in motion and where there is a lot of shading.
 - **No feedback blur.** The game blends each frame with the previous ones, most visibly when rolling.
 - **No rings in glows.** The game keeps the frame in 10-bit buffers; the plugin makes them 16-bit and
   dithers the output.
@@ -382,17 +419,46 @@ Settings are in `NierReplicantGFX.ini`, each one described in the file. It lies 
 in the game folder (Standalone), in `LunarTear\mods\NierReplicantGFX` (Lunar Tear) or next to
 `NierReplicantGFX.asi` (ASI). Restart the game after a change.
 
+#### How it looks
+
+A test scene run through the game's real ambient occlusion shader and through the plugin's: not game
+screenshots, but an illustration of what the plugin changes. Left, the game; right, NierReplicantGFX.
+
+![Ambient occlusion while the camera turns](docs/demo_ao_rotation.gif)
+
+The camera turns as with the right stick. The blotches in the game's shading stay in place on the screen
+while the scene moves under them, so a pattern seems to follow the camera. It only shows in motion and
+where there is a lot of shading, so screenshots show the difference less than the game does.
+
+![The noise that turns the occluder search directions](docs/ao_pattern_noise.png)
+
+Where the pattern comes from: the game turns the directions it searches for occluders by its own angle for
+every pixel. This noise is too coarse for the game's blur. The plugin uses a 4×4 pixel tile that the blur
+removes.
+
+![A dim glow: 10 bits without dithering vs 16 bits with dithering](docs/demo_glow_banding.png)
+
+A dim glow in the dark: at 10 bits there are rings near black; at 16 bits with dithering the gradient is
+smooth. The bottom row is the same with brightness ×6.
+
+![The whole frame and ambient occlusion only](docs/demo_frame.png)
+
+The whole frame (top) and ambient occlusion only with extra contrast (bottom); right, the plugin's own
+ambient occlusion, `RenderScale = 2.0` and dithering.
+
 ### Installation
 
 Ready-to-use files are on the [Releases](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest)
-page, three archives per plugin, one per loading method. The simplest and fastest is Standalone: download
+page, three archives per plugin, one per installation method. The simplest and fastest is Standalone: download
 the archive and drag its contents into the game folder. Which one to pick:
 
 - **Standalone**, if you only want these mods: no third-party tools, and the plugin loads first;
 - **Lunar Tear**, if you already install other mods with it: it merges the archives of all mods;
 - **ASI**, if you already use Ultimate ASI Loader or Special K.
 
-Use one method per plugin. Extract the archives into the game folder, the one with
+Use one method per plugin. The loaders themselves can be combined: Special K loads Lunar Tear or `.asi`
+files as plug-ins, and Ultimate ASI Loader works next to Lunar Tear as long as their file names differ.
+Extract the archives into the game folder, the one with
 `NieR Replicant ver.1.22474487139.exe` (in Steam: Manage → Browse local files; usually
 `C:\Program Files (x86)\Steam\steamapps\common\NieR Replicant ver.1.22474487139`).
 
@@ -412,7 +478,7 @@ Use one method per plugin. Extract the archives into the game folder, the one wi
 
 - **Lunar Tear:** install [Lunar Tear](https://www.nexusmods.com/nierreplicant/mods/87), then extract
   `*-LunarTear.zip` into the game folder; the archives already contain `LunarTear\mods\…`, so missing
-  folders are created. Lunar Tear stands in for three libraries, so its file may be named `dxgi.dll` (as its
+  folders are created (if they are not, create them and put the archives' files there). Lunar Tear stands in for three libraries, so its file may be named `dxgi.dll` (as its
   author suggests), `d3d11.dll` or `dinput8.dll`, whichever no other mod uses. It can also be loaded
   through Special K as a plug-in with Load Order Early, under any file name and in any folder; the mods
   stay in `LunarTear\mods`. If `LunarTear\lunartear.log` says "VFS hook missed", it loaded too late and
@@ -484,8 +550,14 @@ means the plugin was not loaded: check the file layout above.
 - **Other archive mods stopped working.** Standalone and ASI give the game their own archive index, so
   mods that replace game files through Lunar Tear archives do not combine with them; install everything
   through Lunar Tear.
-- **An antivirus flags `dxgi.dll`.** These archives contain no such file: `dxgi.dll` in the game folder is
-  Lunar Tear or Special K. Get them from their official pages; Standalone needs no third-party DLL.
+- **No log, the plugin is not loaded.** Windows may block files downloaded from the internet. Open the
+  properties of the DLL or `.asi` (and of Lunar Tear, Special K or the ASI loader, if you use them); if the
+  General tab says the file came from another computer, tick Unblock and press OK. Unblocking the archive
+  before extracting it unblocks every file inside.
+- **An antivirus blocks or removes a DLL.** The plugins, Lunar Tear, Special K and ASI loaders are
+  libraries (DLLs) that the game loads into itself, so antiviruses sometimes flag them by mistake. Add the
+  game folder to the exceptions and restore the files from quarantine; get everything from official pages
+  only.
 - **The game was updated or Steam verified the files.** Verification leaves these mods in place, since
   they replace no game files. If an update changes the game code, the plugins change nothing and log
   `skipped`; a new version of the mods is needed then.
