@@ -84,6 +84,8 @@
 | Lunar Tear | [UkrainianTranslation-LunarTear.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-LunarTear.zip) | [NierReplicantGFX-LunarTear.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-LunarTear.zip) |
 | ASI | [UkrainianTranslation-ASI.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/UkrainianTranslation-ASI.zip) | [NierReplicantGFX-ASI.zip](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest/download/NierReplicantGFX-ASI.zip) |
 
+Ті самі архіви є на Nexus Mods: [переклад](https://www.nexusmods.com/games/nierreplicant/mods/131) і [графіка](https://www.nexusmods.com/nierreplicant/mods/130). Нові версії спершу з'являються тут.
+
 ### Який спосіб обрати
 
 Найпростіше й найшвидше — **Standalone**: завантажте архів і перетягніть його вміст у теку гри, нічого
@@ -300,7 +302,7 @@ shader   replaced: gen_ssao_mask_default_c -> NierReplicantGFX AO
   `LunarTear\lunartear.log` не має бути рядка «VFS hook missed».
 - **Частина меню й налаштувань порожня, гра вилітає на історіях зброї.** У `NierReplicantUA.log` буде
   рядок `pool     skipped`: плагін завантажився пізніше, ніж гра прочитала текст. Для ASI поставте
-  Load Order: Early, або перейдіть на Standalone: він завантажується найраніше.
+  Load Order: Early (у Special K), або перейдіть на Standalone: він завантажується найраніше.
 - **Інші моди перестали працювати.** Варіанти Standalone і ASI підставляють грі власний індекс
   архівів (`info_uk.arc`), тож моди, які теж підміняють файли гри через архіви Lunar Tear, разом із ними не
   працюватимуть. Ставте все разом через Lunar Tear.
@@ -315,11 +317,13 @@ shader   replaced: gen_ssao_mask_default_c -> NierReplicantGFX AO
 - **Гра оновилася або Steam перевірив файли.** Перевірка файлів ці моди не прибирає, бо вони не замінюють
   файлів гри. Якщо оновлення змінить код гри, плагіни нічого не чіпатимуть і напишуть у лог `skipped`; тоді
   потрібна нова версія модів.
-- **Ім'я героя не вводиться кирилицею.** Гра читає клавіші як латиницю, тож ім'я вводиться латиницею.
+- **Ім'я героя вводьте латиницею.** Кирилицю гра не показує: якщо набрати ім'я українською розкладкою, на
+  екрані з'являться зовсім інші символи.
 - **Гра гальмує з NierReplicantGFX.** Найважчий для відеокарти суперсемплінг: поставте `RenderScale = 1.0`
   (за замовчуванням) або менше значення, наприклад 1.5.
-- **Затінення здається надто темним чи світлим.** Змініть `Strength` у `NierReplicantGFX.ini`; `Shader = 0`
-  повертає затінення гри.
+- **Затінення здається надто темним чи світлим.** Налаштуйте `Strength` у `NierReplicantGFX.ini` під себе:
+  більше значення — темніші тіні, менше — світліші. Якщо вам більше до вподоби оригінальне затінення гри,
+  поставте `Shader = 0`.
 
 ## Як це працює
 
@@ -449,7 +453,8 @@ ambient occlusion, `RenderScale = 2.0` and dithering.
 ### Installation
 
 Ready-to-use files are on the [Releases](https://github.com/Swiftlyx/nier-replicant-ua-gfx/releases/latest)
-page, three archives per plugin, one per installation method. The simplest and fastest is Standalone: download
+page, three archives per plugin, one per installation method (also on Nexus Mods: [translation](https://www.nexusmods.com/games/nierreplicant/mods/131),
+[graphics](https://www.nexusmods.com/nierreplicant/mods/130); new versions appear here first). The simplest and fastest is Standalone: download
 the archive and drag its contents into the game folder. Which one to pick:
 
 - **Standalone**, if you only want these mods: no third-party tools, and the plugin loads first;
@@ -546,7 +551,7 @@ means the plugin was not loaded: check the file layout above.
   translation log must contain `index    mount "" … info_uk.arc`; with Lunar Tear, `lunartear.log` must not
   say "VFS hook missed".
 - **Parts of the menus are empty, the game crashes on weapon stories.** The log says `pool     skipped`:
-  the plugin loaded after the game read its text. Set Load Order to Early or use Standalone.
+  the plugin loaded after the game read its text. Set Load Order to Early (in Special K) or use Standalone.
 - **Other archive mods stopped working.** Standalone and ASI give the game their own archive index, so
   mods that replace game files through Lunar Tear archives do not combine with them; install everything
   through Lunar Tear.
@@ -563,8 +568,8 @@ means the plugin was not loaded: check the file layout above.
   `skipped`; a new version of the mods is needed then.
 - **The game runs slowly with NierReplicantGFX.** Supersampling is the heaviest: use `RenderScale = 1.0`
   (the default) or a lower value such as 1.5.
-- **The ambient occlusion looks too dark or too light.** Change `Strength` in `NierReplicantGFX.ini`;
-  `Shader = 0` brings back the game's own shading.
+- **The ambient occlusion looks too dark or too light.** Adjust `Strength` in `NierReplicantGFX.ini` to your
+  taste: higher is darker, lower is lighter. If you prefer the game's original shading, set `Shader = 0`.
 
 ### Redistribution
 
