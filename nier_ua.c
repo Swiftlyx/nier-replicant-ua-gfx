@@ -21,6 +21,16 @@
  *   pickup   "Obtained <item>": the item name is formatted straight into the 128-byte message buffer
  *            instead of a 32-byte temporary.
  *   talker   The talker_name.tnd loader keeps speaker names longer than 31 bytes.
+ *   words    A Word Edit line in the magic and weapon lists is built from word A, word B and the target
+ *            name in the order of a per-language table (exe+0xB90DF0, three int32 per language index:
+ *            0 = A, 1 = B, 2 = target). The English row (index 2), which the translation uses, becomes
+ *            target, A, B, the order the game uses for French, Italian and Spanish: the Ukrainian words
+ *            are a genitive (A) and a continuation of the phrase (B), so they follow the name. The word
+ *            set screen draws its columns at the anchors of its widget layout but takes the selection,
+ *            the word lists and the name colour from a copy of the table (exe+0xC11230), so that copy
+ *            stays as it is; the translation moves the columns in the layout itself
+ *            (white_book_word_separate_word.bxon in ua.arc). NameFirst = 0 in NierReplicantUA.ini keeps
+ *            the game's order in the lists; the word set screen is not affected.
  *   index    When data\info_uk.arc exists, the game opens it instead of data\info.arc, so the original
  *            index stays as it is. exe+0x8ED1F0 mounts a folder of archives (copied to [rsi+0x28]): the
  *            main data with an empty folder name, the DLC as "dlc\dlc01\". It opens prefix + "info.arc"
@@ -48,6 +58,7 @@
 #define INDEX_FILE   L"data\\info_uk.arc"
 #define ENV_MARKER   L"NIER_REPLICANT_UA_LOADED"
 #define LOG_NAME     L"NierReplicantUA.log"
+#define CONFIG_NAME  L"NierReplicantUA.ini"
 
 /* Result bits of NierUA_Apply (also used by the test). */
 #define R_POOL     0x01
@@ -55,6 +66,9 @@
 #define R_PICKUP   0x04
 #define R_TALKER   0x08
 #define R_INDEX    0x10
+#define R_WORDS    0x20
+
+static int g_name_first = 1;   /* [WordEdit] NameFirst */
 
 static const Site POOL_SITES[] = {
     {PARSER_START, "33d2488db990f400004c89b42420c10000488bcf41b800000400e8b7f28500498bc548c7870000040001000000",
@@ -81,6 +95,10 @@ static const Site PICKUP_SITES[] = {
 static const Site TALKER_SITES[] = {
     {0xD68F3, "41b91f000000418d5101488d8d703f0000e82f3e86004c8d85703f0000",
      "eb1b909090909090909090909090909090909090909090909090909090"},
+};
+
+static const Site WORDS_SITES[] = {
+    {0xB90E08, "000000000100000002000000", "020000000000000001000000"},   /* English row: A, B, target -> target, A, B */
 };
 
 /*
@@ -278,6 +296,17 @@ __declspec(dllexport) unsigned NierUA_Apply(uint8_t *base, const wchar_t *game_d
             log_line("talker   failed to write");
         }
     }
+    if (!g_name_first) {
+        log_line("words    off: NameFirst = 0, Word Edit lines keep the game's order");
+    } else if (check_group(base, WORDS_SITES, 1, R_WORDS, "words", &result)) {
+        if (apply_plain(base, WORDS_SITES, 1)) {
+            result |= R_WORDS;
+            log_line("words    applied: Word Edit lines as name, word A, word B");
+        } else {
+            result |= R_WORDS << 16;
+            log_line("words    failed to write");
+        }
+    }
 
     swprintf(index_path, MAX_PATH, L"%ls%ls", game_dir, INDEX_FILE);
     if (GetFileAttributesW(index_path) == INVALID_FILE_ATTRIBUTES) {
@@ -292,6 +321,19 @@ __declspec(dllexport) unsigned NierUA_Apply(uint8_t *base, const wchar_t *game_d
         }
     }
     return result;
+}
+
+/* Settings for NierUA_Apply; DllMain reads them from NierReplicantUA.ini. */
+__declspec(dllexport) void NierUA_Configure(int name_first)
+{
+    g_name_first = name_first;
+}
+
+static void read_config(const wchar_t *dir)
+{
+    wchar_t path[MAX_PATH];
+    swprintf(path, MAX_PATH, L"%ls%ls", dir, CONFIG_NAME);
+    g_name_first = GetPrivateProfileIntW(L"WordEdit", L"NameFirst", 1, path) != 0;
 }
 
 /* Lunar Tear calls this after loading the DLL; everything is done in DllMain already. */
@@ -320,6 +362,7 @@ static void attach(HINSTANCE self)
         log_line("host is not NieR Replicant ver.1.22474487139 (Steam): nothing patched");
         return;
     }
+    read_config(dll_dir);
     module_dir(NULL, exe_dir, MAX_PATH);
     NierUA_Apply((uint8_t *)GetModuleHandleW(NULL), exe_dir);
 }

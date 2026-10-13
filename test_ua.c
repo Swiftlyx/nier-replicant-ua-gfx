@@ -12,6 +12,7 @@
 #define POOL_SIZE    0x100000u
 
 typedef unsigned (*Apply_t)(uint8_t *, const wchar_t *);
+typedef void (*Configure_t)(int);
 typedef void *(*PoolInit_t)(uint8_t *);
 
 static void check_pool_init(uint8_t *base)
@@ -48,6 +49,9 @@ static void check_applied(uint8_t *base)
           "fishing: language range 2-5");
     check(bytes_are(base + 0xD68F3, "eb1b909090909090909090909090909090909090909090909090909090"),
           "talker: strncpy skipped");
+    check(bytes_are(base + 0xB90E08, "020000000000000001000000") && bytes_are(base + 0xB90DF0, "000000000100000002000000"),
+          "words, line table: English row target, A, B; Japanese row unchanged");
+    check(bytes_are(base + 0xC11248, "000000000100000002000000"), "words, column table unchanged");
     for (i = 0; i < 5; i++)
         same &= base[pickup[i]] == 0xE8 && call_target(base + pickup[i]) == stub;
     check(same, "pickup: all 5 calls go to one stub");
@@ -89,6 +93,7 @@ int wmain(int argc, wchar_t **argv)
     wchar_t dir_with[MAX_PATH], dir_without[MAX_PATH], path[MAX_PATH], temp[MAX_PATH];
     HMODULE ua;
     Apply_t apply;
+    Configure_t configure;
     uint8_t *base, before[32];
     unsigned r;
     HANDLE h;
@@ -99,8 +104,9 @@ int wmain(int argc, wchar_t **argv)
     }
     ua = LoadLibraryW(L"NierReplicantUA.dll");
     apply = ua ? (Apply_t)GetProcAddress(ua, "NierUA_Apply") : NULL;
-    if (!apply) {
-        printf("NierReplicantUA.dll or NierUA_Apply not found\n");
+    configure = ua ? (Configure_t)GetProcAddress(ua, "NierUA_Configure") : NULL;
+    if (!apply || !configure) {
+        printf("NierReplicantUA.dll, NierUA_Apply or NierUA_Configure not found\n");
         return 2;
     }
     /* game folders with a trailing backslash, one of them with data\info_uk.arc */
@@ -132,8 +138,18 @@ int wmain(int argc, wchar_t **argv)
     base = map_image(argv[1]);
     r = apply(base, dir_with);
     printf("  result 0x%x\n", r);
-    check((r & 0x1F) == 0x1F && !(r >> 16), "all five applied");
+    check(r == 0x3F, "all six applied");
     check_index(base);
+    FreeLibrary((HMODULE)base);
+
+    printf("2b. NameFirst = 0\n");
+    base = map_image(argv[1]);
+    configure(0);
+    r = apply(base, dir_without);
+    configure(1);
+    printf("  result 0x%x\n", r);
+    check(!(r & 0x20) && !(r >> 16) && bytes_are(base + 0xB90E08, "000000000100000002000000") &&
+          bytes_are(base + 0xC11248, "000000000100000002000000"), "words not applied, both English rows unchanged");
     FreeLibrary((HMODULE)base);
 
     printf("3. original exe, text_common already parsed\n");

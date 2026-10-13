@@ -8,3 +8,4 @@ EXPORTS
     GetdfDIJoystick = proxy_GetdfDIJoystick
     LunarTearPluginInit
     NierUA_Apply
+    NierUA_Configure

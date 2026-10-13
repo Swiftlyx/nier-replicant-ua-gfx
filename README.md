@@ -25,11 +25,35 @@
 - показує в повідомленні «Отримано: …» повну назву предмета, а не перші ~13 літер;
 - не обрізає імена мовців над репліками (до 63 байтів);
 - показує рекорди риболовлі в сантиметрах і кілограмах;
+- ставить у рядках Word Edit (списки магії та зброї) назву перед словами: «Чорна рука смерті наспівує
+  пісню» замість «смерті наспівує пісню Чорна рука»;
 - читає індекс архівів із `data\info_uk.arc`, тож оригінальний `data\info.arc` не треба замінювати.
+
+Порядок у рядках Word Edit налаштовується у файлі `NierReplicantUA.ini` поруч із DLL перекладу:
+`NameFirst = 1` (за замовчуванням) — спершу назва, `NameFirst = 0` — як у грі, спершу слова. Зміни діють
+після перезапуску гри.
 
 Тексти, шрифт і текстури перекладу лежать в архіві `ua.arc`, який входить у готові файли перекладу
 разом із плагіном (див. «Встановлення»). Це ШІ-переклад: текст переклала модель Claude Opus 5.5
 (Extra high) від Anthropic, терміни, стиль, правки й перевірка в грі — Swiftlyx.
+
+### Word Edit: що в плагіні, а що в перекладі
+
+Гра зберігає порядок слів у двох різних місцях, тож і змінюється він у двох:
+
+- **Рядок у списках магії та зброї** гра складає в коді: бере слово A, слово B і назву в порядку з
+  таблиці всередині exe, окремо для кожної мови. У файлах гри цього порядку немає, тож змінити його може
+  лише плагін. Він переписує рядок англійської мови (її місце займає переклад) на «назва, A, B», як у грі
+  вже зроблено для французької, італійської та іспанської.
+- **Три колонки на екрані, де обирають слова**, гра малює на місцях із розмітки цього екрана
+  (`white_book_word_separate_word` в архіві гри). Розмітка — це дані, тож колонки переставлено в `ua.arc`,
+  разом з іншими правками інтерфейсу перекладу. Те, яка колонка що означає (вибір, списки слів, колір
+  назви), цей екран бере з копії тієї ж таблиці в exe. Якщо змінити копію, колонки лишаються на своїх
+  місцях, а списки слів відкриваються порожніми, тому плагін її не чіпає.
+
+Через це `NameFirst = 0` повертає порядок лише в списках магії та зброї: на екрані вибору слів назва
+лишається ліворуч. Текст перекладу розрахований на порядок «назва, слова»: слово A стоїть у родовому
+відмінку й пишеться з малої літери.
 
 ## NierReplicantGFX
 
@@ -118,6 +142,7 @@ ASI Loader працює поруч із Lunar Tear, якщо в них різн�
    NieR Replicant ver.1.22474487139\
    ├─ NieR Replicant ver.1.22474487139.exe
    ├─ dinput8.dll                  переклад
+   ├─ NierReplicantUA.ini          налаштування перекладу
    ├─ xinput9_1_0.dll              графіка
    ├─ NierReplicantGFX.ini         налаштування графіки
    └─ data\
@@ -144,6 +169,7 @@ ASI Loader працює поруч із Lunar Tear, якщо в них різн�
       └─ mods\
          ├─ UkrainianTranslation\
          │  ├─ NierReplicantUA.dll
+         │  ├─ NierReplicantUA.ini     налаштування перекладу
          │  ├─ ua.arc
          │  ├─ info.arc
          │  └─ manifest.json
@@ -194,6 +220,7 @@ NieR Replicant ver.1.22474487139\
 ├─ NieR Replicant ver.1.22474487139.exe
 ├─ winmm.dll                    Ultimate ASI Loader (або інша вільна назва)
 ├─ NierReplicantUA.asi          переклад
+├─ NierReplicantUA.ini          налаштування перекладу, завжди поруч із NierReplicantUA.asi
 ├─ NierReplicantGFX.asi         графіка
 ├─ NierReplicantGFX.ini         налаштування графіки, завжди поруч із NierReplicantGFX.asi
 └─ data\
@@ -201,7 +228,7 @@ NieR Replicant ver.1.22474487139\
    └─ info_uk.arc               переклад, завжди в data гри
 ```
 
-Файли `.asi` (разом з `NierReplicantGFX.ini`) можна перенести й у підтеку `scripts` чи `plugins`, а
+Файли `.asi` (разом зі своїми `.ini`) можна перенести й у підтеку `scripts` чи `plugins`, а
 `ua.arc` і `info_uk.arc` мають лишатися в `data` гри.
 
 Зі Special K, встановленим локально, файли можуть лежати так:
@@ -212,6 +239,7 @@ NieR Replicant ver.1.22474487139\
 ├─ d3d11.dll                    Special K (SpecialK64.dll під вільною назвою: d3d11.dll чи dxgi.dll)
 ├─ d3d11.ini                    налаштування Special K, з тією ж назвою, що й його DLL
 ├─ NierReplicantUA.asi          переклад
+├─ NierReplicantUA.ini          налаштування перекладу, поруч із NierReplicantUA.asi
 ├─ NierReplicantGFX.asi         графіка
 ├─ NierReplicantGFX.ini         налаштування графіки, поруч із NierReplicantGFX.asi
 └─ data\
@@ -272,11 +300,12 @@ NieR Replicant ver.1.22474487139\
 перекладу, коли все працює (Standalone чи ASI):
 
 ```
-NierReplicantUA 1.0.4 by Swiftlyx, loaded at 31 ms after process start
+NierReplicantUA 1.0.5 by Swiftlyx, loaded at 31 ms after process start
 pool     applied: text_common pool 1 MiB
 fishing  applied: records in cm/kg
 pickup   applied: long item names in "Obtained"
 talker   applied: long speaker names
+words    applied: Word Edit lines as name, word A, word B
 index    applied: data\info_uk.arc
 index    mount "" at 133 ms: info_uk.arc
 index    mount "dlc\dlc01\" at 829 ms: info.arc
@@ -335,7 +364,12 @@ NierReplicantUA (адреси відносно початку exe):
 | `fishing` | `0x3A7D01`, `0x3A80D9` | см і кг для англійського слота: діапазон мов 3–5 → 2–5 |
 | `pickup` | виклики `snprintf` у `0xC17B0` | назва предмета пишеться відразу в 128-байтовий буфер повідомлення |
 | `talker` | `0xD68F3` | завантажувач `talker_name.tnd` не обрізає імена до 31 байта |
+| `words` | `0xB90E08` | таблиця порядку Word Edit `0xB90DF0` (три int32 на індекс мови: 0 — слово A, 1 — слово B, 2 — назва): рядок англійської (індекс 2) стає «назва, A, B», як у французької, італійської та іспанської. Копію таблиці `0xC11230`, з якої екран вибору слів бере вибір колонки, списки слів і колір назви, плагін не змінює. Вимикається `NameFirst = 0` у `NierReplicantUA.ini` |
 | `index` | `0x8ED281` | функція `0x8ED1F0` підключає теку архівів (основні дані — з порожньою назвою теки, DLC — `dlc\dlc01\`) і відкриває в ній `info.arc`; для основних даних вставка підставляє `info_uk.arc`, якщо він є, а DLC читає свій `info.arc`. Рядки гри не змінюються |
+
+Колонки екрана вибору слів переставлено в розмітці `white_book_word_separate_word.bxon` (`ui/widget_param`)
+в `ua.arc`: три дочірні віджети прив'язані до якорів `word_topic_txt_01`–`03`, і переклад зсуває ці
+прив'язки на одну позицію (01 → 02, 02 → 03, 03 → 01), тож колонка назви опиняється ліворуч.
 
 NierReplicantGFX перехоплює `D3D11CreateDevice` в імпорті гри, а на створеному пристрої — створення
 текстур, подань (views) і шейдерів:
@@ -402,7 +436,23 @@ The plugin:
 - shows the full item name in "Obtained ..." instead of the first ~13 letters;
 - keeps speaker names up to 63 bytes;
 - shows fishing records in centimetres and kilograms;
+- puts the name before the words in Word Edit lines (magic and weapon lists), the order the
+  Ukrainian phrases need;
 - reads the archive index from `data\info_uk.arc`, so the original `data\info.arc` stays as it is.
+
+The Word Edit order is set in `NierReplicantUA.ini` next to the translation DLL: `NameFirst = 1` (the
+default) puts the name first, `NameFirst = 0` keeps the game's order. Restart the game after a change.
+
+The game keeps this order in two places. The line in the magic and weapon lists is built by code from
+word A, word B and the name in the order of a per-language table inside the exe; no data file holds it,
+so the plugin rewrites the English row (the slot the translation uses) to name, A, B, as the game already
+does for French, Italian and Spanish. The word set screen draws its three columns at the places given by
+its layout (`white_book_word_separate_word` in the game archives), which is data, so the columns are
+swapped in `ua.arc` with the other interface changes of the translation. That screen takes the meaning of
+each column (selection, word lists, name colour) from a copy of the same table; changing the copy leaves
+the columns in place and opens empty word lists, so the plugin leaves it alone. As a result,
+`NameFirst = 0` restores the order only in the magic and weapon lists; the word set screen keeps the name
+on the left. The translated text is written for the name-first order.
 
 The translation itself (text, font, textures) is in `ua.arc`, which comes with the plugin in the
 translation archives. It is an AI translation: the text was translated by Claude Opus 5.5 (Extra high)
@@ -474,6 +524,7 @@ Extract the archives into the game folder, the one with
   NieR Replicant ver.1.22474487139\
   ├─ NieR Replicant ver.1.22474487139.exe
   ├─ dinput8.dll                  translation
+  ├─ NierReplicantUA.ini          translation settings
   ├─ xinput9_1_0.dll              graphics
   ├─ NierReplicantGFX.ini         graphics settings
   └─ data\
@@ -494,7 +545,7 @@ Extract the archives into the game folder, the one with
   ├─ dxgi.dll                     Lunar Tear itself (or d3d11.dll, dinput8.dll; or loaded by Special K)
   └─ LunarTear\
      └─ mods\
-        ├─ UkrainianTranslation\    NierReplicantUA.dll, ua.arc, info.arc, manifest.json
+        ├─ UkrainianTranslation\    NierReplicantUA.dll, NierReplicantUA.ini, ua.arc, info.arc, manifest.json
         └─ NierReplicantGFX\        NierReplicantGFX.dll, NierReplicantGFX.ini, manifest.json
   ```
 
@@ -502,13 +553,14 @@ Extract the archives into the game folder, the one with
   named after a library the game loads at startup, such as `winmm.dll`, `d3d11.dll`, `dxgi.dll` or
   `dinput8.dll`. Any such name works if the loader supports it and no other mod uses it (`dinput8.dll` and
   `xinput9_1_0.dll` are the Standalone files, `dxgi.dll` is Lunar Tear). The `.asi` files may move to a
-  `scripts` or `plugins` subfolder together with `NierReplicantGFX.ini`; `ua.arc` and `info_uk.arc` stay in
+  `scripts` or `plugins` subfolder together with their `.ini` files; `ua.arc` and `info_uk.arc` stay in
   the game's `data` folder.
 
   ```
   NieR Replicant ver.1.22474487139\
   ├─ winmm.dll                    Ultimate ASI Loader (or another free name)
   ├─ NierReplicantUA.asi          translation
+  ├─ NierReplicantUA.ini          translation settings, always next to NierReplicantUA.asi
   ├─ NierReplicantGFX.asi         graphics
   ├─ NierReplicantGFX.ini         graphics settings, always next to NierReplicantGFX.asi
   └─ data\
@@ -532,6 +584,7 @@ Extract the archives into the game folder, the one with
     ├─ d3d11.dll                    Special K (SpecialK64.dll under a free name: d3d11.dll or dxgi.dll)
     ├─ d3d11.ini                    Special K settings, named like its DLL
     ├─ NierReplicantUA.asi
+    ├─ NierReplicantUA.ini          next to NierReplicantUA.asi
     ├─ NierReplicantGFX.asi
     ├─ NierReplicantGFX.ini         next to NierReplicantGFX.asi
     └─ data\
