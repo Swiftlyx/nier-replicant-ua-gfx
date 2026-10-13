@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="docs/logo.png" alt="Ніер Реплікант вер.1.22474487139..." width="760">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo.png">
+    <img src="docs/logo_light.png" alt="Нір Реплікант ver.1.22474487139..." width="760">
+  </picture>
 </p>
 
 # NieR Replicant ver.1.22474487139: ліміти тексту й графіка
