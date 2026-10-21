@@ -68,7 +68,9 @@
 - **Без кілець на світінні.** Гра тримає кадр у 10-бітних буферах, тож світіння й темні переходи йдуть
   кільцями. Плагін робить ці буфери 16-бітними й додає дизеринг на виході.
 - **Суперсемплінг (SSAA).** Гра рендерить кадр більшим за екран і зменшує його, тож краї предметів
-  рівні. За замовчуванням вимкнено, вмикається параметром `RenderScale`.
+  рівні. За замовчуванням вимкнено, вмикається параметром `RenderScale`. Працює разом із
+  [NierReplicantFix](https://codeberg.org/Lyall/NierReplicantFix), зокрема з його підтримкою екранів
+  будь-якого співвідношення сторін.
 
 Усе це налаштовується у файлі `NierReplicantGFX.ini`, опис кожного параметра є в самому файлі. Він лежить
 поруч із DLL графіки: у теці гри (Standalone), у `LunarTear\mods\NierReplicantGFX` (Lunar Tear) або поруч
@@ -384,7 +386,11 @@ NierReplicantGFX перехоплює `D3D11CreateDevice` в імпорті гр
 - 10-бітні текстури R10G10B10A2 без початкових даних створюються як R16G16B16A16, а подання до них
   отримують відповідний формат;
 - для суперсемплінгу в `0x7D425E` вставлено виклик, що множить внутрішню роздільність на
-  `RenderScale`, а фінальний прохід (`0x8B31FB`, `0x8B3236`) центрує кадр за прямокутником 16:9 екрана.
+  `RenderScale`. Фінальний прохід центрує кадр за внутрішньою роздільністю, яку читає викликом у
+  `0x8B3163`; цей виклик повертає роздільність до множення, тож кадр стоїть там само, де й у грі без
+  суперсемплінгу. NierReplicantFix шукає свої виправлення співвідношення сторін за шаблонами байтів у
+  `0x7D4226`–`0x7D4243` і `0x8B31EB`–`0x8B320E`; плагін ці байти не змінює, тож порядок завантаження
+  неважливий.
 
 Обидві DLL експортують `LunarTearPluginInit`, щоб їх завантажував Lunar Tear, але його Plugin API не
 використовують.
@@ -470,7 +476,9 @@ by Anthropic; terminology, style, corrections and in-game testing by Swiftlyx.
 - **No rings in glows.** The game keeps the frame in 10-bit buffers; the plugin makes them 16-bit and
   dithers the output.
 - **Supersampling (SSAA).** The frame is rendered larger than the screen and scaled down. Off by
-  default, see `RenderScale`.
+  default, see `RenderScale`. Works together with
+  [NierReplicantFix](https://codeberg.org/Lyall/NierReplicantFix), including its support for any aspect
+  ratio.
 
 Settings are in `NierReplicantGFX.ini`, each one described in the file. It lies next to the graphics DLL:
 in the game folder (Standalone), in `LunarTear\mods\NierReplicantGFX` (Lunar Tear) or next to

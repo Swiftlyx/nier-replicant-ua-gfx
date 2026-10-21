@@ -17,8 +17,11 @@
  * Supersampling: exe+0x7D40F0 fits the output size to 16:9 and stores it as the render size
  * ([display+0x174], used for every render target); a stub at exe+0x7D425E then calls
  * scale_render_size(). The final pass (exe+0x8B2F50) centres the picture by |output / 2 - render / 2|
- * (exe+0x8B31FB, exe+0x8B3236); both sites take the fitted 16:9 rectangle (xmm13 / xmm14) instead of
- * the render size, so a larger render size stays centred. The final shader samples the scene once per
+ * with the render size it reads through the call at exe+0x8B3163; that call goes to query_render_size(),
+ * which returns the size from before scaling, so the picture is placed exactly as the game places its own.
+ * NierReplicantFix (Lyall) finds its 16:9 fixes by byte patterns over exe+0x7D4226..0x7D4243 and
+ * exe+0x8B31EB..0x8B320E; neither range is touched, so both plugins work together in any load order, and
+ * with it the size before scaling is the full output size. The final shader samples the scene once per
  * output pixel, so a factor of 2 averages exactly 2x2 pixels.
  *
  * Settings: NierReplicantGFX.ini next to the DLL. Log: NierReplicantGFX.log next to the DLL.
@@ -36,8 +39,7 @@
 #include "version.h"
 
 #define RENDER_SIZE   0x7D425Eu
-#define FIT_OFFSET_X  0x8B31FBu
-#define FIT_OFFSET_Y  0x8B3236u
+#define RENDER_QUERY  0x8B3163u
 #define DISPLAY_SIZE  0x174u          /* render width and height in the display object */
 #define SCALE_MAX     4.0f
 #define STRENGTH_MAX  4.0f
@@ -52,17 +54,16 @@
 
 static const Site SSAA_SITES[] = {
     {RENDER_SIZE, "488d4b284c8b8374010000", NULL},   /* lea rcx, [rbx+0x28]; mov r8, [rbx+0x174] */
-    {FIT_OFFSET_X, "660f6e4424680f5bc0", NULL},       /* movd xmm0, [rsp+0x68]; cvtdq2ps xmm0, xmm0 */
-    {FIT_OFFSET_Y, "660f6e44246c0f5bc0", NULL},       /* movd xmm0, [rsp+0x6c]; cvtdq2ps xmm0, xmm0 */
+    {RENDER_QUERY, "e87805f2ff", NULL},               /* call exe+0x7D36E0: [rdx] = [rcx+0x174] */
 };
-static const char FIT_X_NEW[] = "410f28c50f1f440000"; /* movaps xmm0, xmm13; nop */
-static const char FIT_Y_NEW[] = "410f28c60f1f440000"; /* movaps xmm0, xmm14; nop */
 
 static unsigned g_fixes = GFX_DEFAULT;
 static int g_high_precision = 1;
 static float g_ao_strength = 1.0f;
 static float g_render_scale = 1.0f;
 static int g_max_height = 2160;
+static int32_t g_fit_size[2];        /* render size before scale_render_size() */
+static int32_t g_scaled_size[2];     /* render size it stored; 0 x 0 when it kept the size */
 static volatile LONG g_upgraded;     /* 10-bit textures created at 16 bits */
 static volatile LONG g_patched;      /* bit per SHADER_FIXES entry: changed at least once */
 
@@ -536,25 +537,45 @@ static void scale_render_size(uint8_t *display)
     if (g_max_height > 0 && (float)wh[1] * s > (float)g_max_height)
         s = (float)g_max_height / (float)wh[1];
     if (s <= 1.0f) {
+        g_scaled_size[0] = g_scaled_size[1] = 0;
         log_line("ssaa     render size %dx%d kept (MaxRenderHeight = %d)", wh[0], wh[1], g_max_height);
         return;
     }
     w = (int32_t)((float)wh[0] * s + 0.5f);
     h = (int32_t)((float)wh[1] * s + 0.5f);
     log_line("ssaa     render size %dx%d -> %dx%d", wh[0], wh[1], w, h);
+    g_fit_size[0] = wh[0];
+    g_fit_size[1] = wh[1];
+    g_scaled_size[0] = w;
+    g_scaled_size[1] = h;
     wh[0] = w;
     wh[1] = h;
+}
+
+/*
+ * Called instead of exe+0x7D36E0 at exe+0x8B3163, where the final pass reads the render size to centre the
+ * picture: returns the size from before scale_render_size(), or the stored size when it was not scaled.
+ */
+static int32_t *query_render_size(const uint8_t *display, int32_t *out)
+{
+    const int32_t *wh = (const int32_t *)(display + DISPLAY_SIZE);
+    int scaled = wh[0] == g_scaled_size[0] && wh[1] == g_scaled_size[1];
+    out[0] = scaled ? g_fit_size[0] : wh[0];
+    out[1] = scaled ? g_fit_size[1] : wh[1];
+    return out;
 }
 
 /*
  * Stub called at exe+0x7D425E (rbx = display object; rsp is 16-byte aligned at the call site, so 8 on
  * entry): calls scale_render_size(rbx), then runs the two instructions the call replaced. The volatile
  * registers it clobbers are free there: rcx and r8 are set by those instructions, rdx right after.
+ * At stub+0x50 a jump to query_render_size() takes the call at exe+0x8B3163 (rcx = display object,
+ * rdx = destination, as for exe+0x7D36E0).
  */
 static int apply_ssaa(uint8_t *base)
 {
-    uint8_t *stub = alloc_near(base), *p, call[11], fx[9], fy[9];
-    void *fn = (void *)scale_render_size;
+    uint8_t *stub = alloc_near(base), *p, call[11], query[5];
+    void *fn = (void *)scale_render_size, *qfn = (void *)query_render_size;
     int32_t d;
     if (!stub)
         return 0;
@@ -571,17 +592,24 @@ static int apply_ssaa(uint8_t *base)
     p += unhex(SSAA_SITES[0].orig, p, 11);        /* lea rcx, [rbx+0x28]; mov r8, [rbx+0x174] */
     *p++ = 0xC3;                                  /* ret */
     memcpy(stub + 0x40, &fn, sizeof fn);
-    FlushInstructionCache(GetCurrentProcess(), stub, 0x48);
+    p = stub + 0x50;
+    *p++ = 0xFF;                                  /* jmp [rip+2] */
+    *p++ = 0x25;
+    d = 2;
+    memcpy(p, &d, 4);
+    memcpy(stub + 0x58, &qfn, sizeof qfn);
+    FlushInstructionCache(GetCurrentProcess(), stub, 0x60);
 
     call[0] = 0xE8;
     if (!rel32(base + RENDER_SIZE + 5, stub, &d))
         return 0;
     memcpy(call + 1, &d, 4);
     memset(call + 5, 0x90, 6);
-    unhex(FIT_X_NEW, fx, sizeof fx);
-    unhex(FIT_Y_NEW, fy, sizeof fy);
-    return write_bytes(base + FIT_OFFSET_X, fx, sizeof fx) && write_bytes(base + FIT_OFFSET_Y, fy, sizeof fy) &&
-           write_bytes(base + RENDER_SIZE, call, sizeof call);
+    query[0] = 0xE8;
+    if (!rel32(base + RENDER_QUERY + 5, stub + 0x50, &d))
+        return 0;
+    memcpy(query + 1, &d, 4);
+    return write_bytes(base + RENDER_QUERY, query, sizeof query) && write_bytes(base + RENDER_SIZE, call, sizeof call);
 }
 
 /* ------------------------------------------------------------------ entry points */
@@ -603,7 +631,7 @@ __declspec(dllexport) unsigned NierGFX_Apply(uint8_t *base)
     unsigned result = 0;
     if (g_render_scale <= 1.0f) {
         log_line("ssaa     off (RenderScale = 1.0)");
-    } else if (check_group(base, SSAA_SITES, 3, R_SSAA, "ssaa", &result)) {
+    } else if (check_group(base, SSAA_SITES, 2, R_SSAA, "ssaa", &result)) {
         if (apply_ssaa(base)) {
             result |= R_SSAA;
             log_line("ssaa     applied: RenderScale %.2f, MaxRenderHeight %d", g_render_scale, g_max_height);

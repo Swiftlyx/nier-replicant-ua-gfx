@@ -6,7 +6,9 @@
  *   - the wrapped CreatePixelShader / CreateComputeShader on a WARP Direct3D 11 device, and both AO shaders
  *     run on a synthetic depth map;
  *   - 10-bit textures and views created at 16 bits;
- *   - supersampling: the patched sites and a run of the render size stub for 1080p, 1440p and 2160p.
+ *   - supersampling: the patched sites, a run of the render size stub for 1080p, 1440p and 2160p and of the
+ *     render size query of the final pass, and the byte patterns NierReplicantFix (Lyall) looks for, with
+ *     the plugins applied in either order.
  *
  * Usage: test_gfx.exe <game exe> <folder with orig_*.dxbc and fixed_*.dxbc>
  */
@@ -20,8 +22,13 @@
 #include <stdlib.h>
 
 #define RENDER_SIZE  0x7D425Eu
-#define FIT_OFFSET_X 0x8B31FBu
-#define FIT_OFFSET_Y 0x8B3236u
+#define RENDER_QUERY 0x8B3163u
+
+/* NierReplicantFix "Current Resolution" (mid hook) and "Render Resolution" (jb -> jmp) patterns. */
+#define LYALL_CURRENT_AT 0x8B31EBu
+#define LYALL_CURRENT    "41 0F ?? ?? F3 0F ?? ?? ?? ?? ?? ?? F3 0F ?? ?? 66 0F ?? ?? ?? ?? 0F 5B ?? F3 0F ?? ?? F3 0F ?? ?? 0F ?? ??"
+#define LYALL_RENDER_AT  0x7D4226u
+#define LYALL_RENDER     "72 ?? F3 0F ?? ?? ?? ?? ?? ?? F3 0F ?? ?? ?? ?? ?? ?? F3 0F ?? ?? 89 ?? ?? ?? ?? ?? EB ??"
 
 typedef void (*Configure_t)(unsigned, int, float, float, int);
 typedef unsigned (*Apply_t)(uint8_t *);
@@ -405,10 +412,40 @@ static uint64_t run_stub(uint8_t *stub, uint32_t w, uint32_t h, uint32_t *out_w,
     return r8;
 }
 
+/* Byte pattern with ?? wildcards, as NierReplicantFix writes them. */
+static int pattern_at(const uint8_t *p, const char *pattern)
+{
+    for (; pattern[0] && pattern[1]; pattern += pattern[2] ? 3 : 2, p++) {
+        unsigned v;
+        if (pattern[0] == '?')
+            continue;
+        sscanf_s(pattern, "%2x", &v);
+        if (*p != (uint8_t)v)
+            return 0;
+    }
+    return 1;
+}
+
+/* Writes hex bytes into the mapped image, as another plugin would patch the code. */
+static void write_code(uint8_t *at, const char *hex)
+{
+    size_t n = strlen(hex) / 2, i;
+    DWORD old;
+    VirtualProtect(at, n, PAGE_EXECUTE_READWRITE, &old);
+    for (i = 0; i < n; i++) {
+        unsigned v;
+        sscanf_s(hex + 2 * i, "%2x", &v);
+        at[i] = (uint8_t)v;
+    }
+    VirtualProtect(at, n, old, &old);
+}
+
 static void test_ssaa(const wchar_t *exe)
 {
     static const uint32_t cases[][4] = {{1920, 1080, 3840, 2160}, {2560, 1440, 3840, 2160}, {3840, 2160, 3840, 2160}};
-    uint8_t *base, *stub;
+    typedef int32_t *(*Query_t)(uint8_t *, int32_t *);
+    uint8_t *base, *stub, *display;
+    Query_t query;
     unsigned r;
     int i;
     printf("5. supersampling, RenderScale 2.0, MaxRenderHeight 2160\n");
@@ -418,16 +455,43 @@ static void test_ssaa(const wchar_t *exe)
     printf("  result 0x%x\n", r);
     check((r & 3) == 3 && !(r >> 16), "ssaa applied, D3D11CreateDevice import redirected");
     check(base[RENDER_SIZE] == 0xE8 && bytes_are(base + RENDER_SIZE + 5, "909090909090"), "render size: call stub + 6 nops");
-    check(bytes_are(base + FIT_OFFSET_X, "410f28c50f1f440000") && bytes_are(base + FIT_OFFSET_Y, "410f28c60f1f440000"),
-          "final pass: offsets from the fitted 16:9 rectangle");
+    check(base[RENDER_QUERY] == 0xE8 && call_target(base + RENDER_QUERY) == call_target(base + RENDER_SIZE) + 0x50,
+          "final pass: render size query -> stub+0x50");
+    check(pattern_at(base + LYALL_CURRENT_AT, LYALL_CURRENT) && pattern_at(base + LYALL_RENDER_AT, LYALL_RENDER),
+          "NierReplicantFix patterns still match");
     stub = call_target(base + RENDER_SIZE);
+    query = (Query_t)call_target(base + RENDER_QUERY);
+    display = VirtualAlloc(NULL, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     for (i = 0; i < 3; i++) {
         uint32_t w, h;
+        int32_t out[2] = {0, 0};
         uint64_t r8 = run_stub(stub, cases[i][0], cases[i][1], &w, &h);
         char label[120];
         snprintf(label, sizeof label, "stub: %ux%u -> %ux%u, r8 = new size", cases[i][0], cases[i][1], w, h);
         check(w == cases[i][2] && h == cases[i][3] && r8 == ((uint64_t)h << 32 | w), label);
+        memcpy(display + 0x174, &w, 4);
+        memcpy(display + 0x178, &h, 4);
+        query(display, out);
+        snprintf(label, sizeof label, "query: %ux%u -> %dx%d (size before scaling)", w, h, out[0], out[1]);
+        check(out[0] == (int32_t)cases[i][0] && out[1] == (int32_t)cases[i][1], label);
     }
+    {
+        static const int32_t other[2] = {1280, 720};   /* not the size the stub stored */
+        uint32_t w, h;
+        int32_t out[2] = {0, 0};
+        run_stub(stub, 1920, 1080, &w, &h);
+        memcpy(display + 0x174, other, sizeof other);
+        check(query(display, out) == out && out[0] == 1280 && out[1] == 720, "query: any other size passes through");
+    }
+    VirtualFree(display, 0, MEM_RELEASE);
+    FreeLibrary((HMODULE)base);
+
+    printf("5b. NierReplicantFix applied first (jb -> jmp at 0x7D4226, mid hook jump at 0x8B31EB)\n");
+    base = map_image(exe);
+    write_code(base + LYALL_RENDER_AT, "eb1a");
+    write_code(base + LYALL_CURRENT_AT, "e900000000");
+    r = apply(base);
+    check((r & 1) && !(r >> 16), "ssaa applied next to NierReplicantFix");
     FreeLibrary((HMODULE)base);
 
     printf("6. supersampling off (RenderScale 1.0)\n");
@@ -435,7 +499,7 @@ static void test_ssaa(const wchar_t *exe)
     configure(FIX_DEFAULT, 1, 1.0f, 1.0f, 2160);
     r = apply(base);
     check(!(r & 1) && bytes_are(base + RENDER_SIZE, "488d4b284c8b8374010000") &&
-              bytes_are(base + FIT_OFFSET_X, "660f6e4424680f5bc0"), "ssaa sites unchanged");
+              bytes_are(base + RENDER_QUERY, "e87805f2ff"), "ssaa sites unchanged");
     FreeLibrary((HMODULE)base);
 }
 
