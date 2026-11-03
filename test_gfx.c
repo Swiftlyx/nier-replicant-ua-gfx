@@ -8,7 +8,9 @@
  *   - 10-bit textures and views created at 16 bits;
  *   - supersampling: the patched sites, a run of the render size stub for 1080p, 1440p and 2160p and of the
  *     render size query of the final pass, and the byte patterns NierReplicantFix (Lyall) looks for, with
- *     the plugins applied in either order.
+ *     the plugins applied in either order;
+ *   - the movie viewport stub: NierReplicantFix's boxes in output pixels mapped onto targets of the scaled
+ *     render size, other targets and the game's own viewports left as they are.
  *
  * Usage: test_gfx.exe <game exe> <folder with orig_*.dxbc and fixed_*.dxbc>
  */
@@ -18,17 +20,24 @@
 
 #define COBJMACROS
 #include <d3d11.h>
+#include <intrin.h>
 #include <math.h>
 #include <stdlib.h>
 
-#define RENDER_SIZE  0x7D425Eu
-#define RENDER_QUERY 0x8B3163u
+#define RENDER_SIZE    0x7D425Eu
+#define RENDER_QUERY   0x8B3163u
+#define MOVIE_VIEWPORT 0x7B0197u
+#define VIEWPORT_SET   0x79D660u
+#define R_MOVIE        0x04u
 
-/* NierReplicantFix "Current Resolution" (mid hook) and "Render Resolution" (jb -> jmp) patterns. */
+/* NierReplicantFix "Current Resolution" (mid hook), "Render Resolution" (jb -> jmp) and "HUD: Movies"
+ * (mid hook) patterns. */
 #define LYALL_CURRENT_AT 0x8B31EBu
 #define LYALL_CURRENT    "41 0F ?? ?? F3 0F ?? ?? ?? ?? ?? ?? F3 0F ?? ?? 66 0F ?? ?? ?? ?? 0F 5B ?? F3 0F ?? ?? F3 0F ?? ?? 0F ?? ??"
 #define LYALL_RENDER_AT  0x7D4226u
 #define LYALL_RENDER     "72 ?? F3 0F ?? ?? ?? ?? ?? ?? F3 0F ?? ?? ?? ?? ?? ?? F3 0F ?? ?? 89 ?? ?? ?? ?? ?? EB ??"
+#define LYALL_MOVIES_AT  0x7B0180u
+#define LYALL_MOVIES     "F3 0F ?? ?? ?? F3 0F ?? ?? ?? ?? ?? ?? F3 0F ?? ?? ?? F3 0F ?? ?? ?? E8 ?? ?? ?? ?? 33 ??"
 
 typedef void (*Configure_t)(unsigned, int, float, float, int);
 typedef unsigned (*Apply_t)(uint8_t *);
@@ -440,6 +449,96 @@ static void write_code(uint8_t *at, const char *hex)
     VirtualProtect(at, n, old, &old);
 }
 
+/* What the movie stub passed on to exe+0x79D660 (replaced by movie_recorder in the test). */
+static struct {
+    void *list;
+    uint32_t count;
+    D3D11_VIEWPORT vp;
+    int aligned;
+} g_rec;
+
+static void movie_recorder(void *list, uint32_t count, const D3D11_VIEWPORT *vp)
+{
+    g_rec.list = list;
+    g_rec.count = count;
+    g_rec.vp = *vp;
+    g_rec.aligned = ((uintptr_t)_AddressOfReturnAddress() & 15) == 8;
+}
+
+/*
+ * thunk(movie stub, viewport, w, h) as exe+0x7B0140 calls exe+0x79D660: ebx = w, edi = h, r8 = viewport,
+ * rcx = a sentinel command list, edx = 1. Returns rbx << 32 | rdi after the call.
+ */
+static uint64_t run_movie_stub(uint8_t *movie, D3D11_VIEWPORT *vp, uint32_t w, uint32_t h)
+{
+    static const uint8_t code[] = {0x53, 0x57, 0x48, 0x83, 0xEC, 0x28, 0x41, 0x8B, 0xD8, 0x41, 0x8B, 0xF9,
+                                   0x48, 0x8B, 0xC1, 0x4C, 0x8B, 0xC2,
+                                   0x48, 0xB9, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
+                                   0xBA, 0x01, 0x00, 0x00, 0x00, 0xFF, 0xD0,
+                                   0x48, 0x8B, 0xC3, 0x48, 0xC1, 0xE0, 0x20, 0x48, 0x09, 0xF8,
+                                   0x48, 0x83, 0xC4, 0x28, 0x5F, 0x5B, 0xC3};
+    typedef uint64_t (*Thunk_t)(uint8_t *, D3D11_VIEWPORT *, uint32_t, uint32_t);
+    static uint8_t *thunk;
+    if (!thunk) {
+        thunk = VirtualAlloc(NULL, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+        memcpy(thunk, code, sizeof code);
+    }
+    memset(&g_rec, 0, sizeof g_rec);
+    return ((Thunk_t)thunk)(movie, vp, w, h);
+}
+
+/*
+ * 5c. The movie stub with NierReplicantFix's "HUD: Movies" boxes: fit size and RenderScale (the render size
+ * stub sets the scaled size), target size, viewport in, viewport expected.
+ */
+static void test_movie(uint8_t *stub)
+{
+    static const struct {
+        uint32_t fit[2];
+        float scale;
+        int max_height;
+        uint32_t target[2];
+        float in[4], out[4];
+        const char *what;
+    } cases[] = {
+        {{1920, 1080}, 1.5f, 2160, {2880, 1620}, {0, 0, 2880, 1080}, {0, 0, 2880, 1620}, "16:9, box from the output height"},
+        {{1920, 1080}, 1.5f, 2160, {2880, 1620}, {0, 0, 2880, 1620}, {0, 0, 2880, 1620}, "16:9, game viewport kept"},
+        {{1920, 1080}, 1.5f, 2160, {1920, 1080}, {0, 0, 1920, 1080}, {0, 0, 1920, 1080}, "video texture 1920x1080 kept"},
+        {{1920, 1080}, 1.5f, 2160, {3840, 2160}, {0, 0, 3840, 1080}, {0, 0, 3840, 1080}, "video texture 3840x2160 kept"},
+        {{2560, 1080}, 1.5f, 2160, {3840, 1620}, {320, 0, 1920, 1620}, {480, 0, 2880, 1620}, "21:9, pillarboxed"},
+        {{1920, 1200}, 1.5f, 2160, {2880, 1800}, {0, 60, 2880, 1080}, {0, 90, 2880, 1620}, "16:10, letterboxed"},
+        {{1600, 1200}, 1.5f, 2160, {2400, 1800}, {0, 150, 2400, 900}, {0, 225, 2400, 1350}, "4:3, letterboxed"},
+        {{1920, 1080}, 2.0f, 2160, {3840, 2160}, {0, 0, 3840, 1080}, {0, 0, 3840, 2160}, "RenderScale 2.0"},
+        {{2560, 1440}, 2.0f, 2160, {3840, 2160}, {0, 0, 3840, 1440}, {0, 0, 3840, 2160}, "1440p, capped at 2160"},
+        {{3840, 2160}, 1.5f, 2160, {3840, 2160}, {0, 0, 3840, 1080}, {0, 0, 3840, 1080}, "2160p kept: no scaled size"},
+    };
+    uint8_t *movie = stub + 0x60, *set;
+    size_t i;
+    printf("5c. movie viewport stub (NierReplicantFix \"HUD: Movies\" boxes)\n");
+    memcpy(&set, stub + 0x90, sizeof set);
+    *(void **)(stub + 0x90) = (void *)movie_recorder;
+    for (i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+        D3D11_VIEWPORT vp = {cases[i].in[0], cases[i].in[1], cases[i].in[2], cases[i].in[3], 0.0f, 1.0f};
+        uint32_t w, h;
+        uint64_t regs;
+        char label[200];
+        configure(FIX_DEFAULT, 1, 1.0f, cases[i].scale, cases[i].max_height);
+        run_stub(stub, cases[i].fit[0], cases[i].fit[1], &w, &h);
+        regs = run_movie_stub(movie, &vp, cases[i].target[0], cases[i].target[1]);
+        snprintf(label, sizeof label, "%s: %.0f,%.0f %.0fx%.0f -> %.0f,%.0f %.0fx%.0f on %ux%u", cases[i].what,
+                 cases[i].in[0], cases[i].in[1], cases[i].in[2], cases[i].in[3], g_rec.vp.TopLeftX,
+                 g_rec.vp.TopLeftY, g_rec.vp.Width, g_rec.vp.Height, cases[i].target[0], cases[i].target[1]);
+        check(g_rec.vp.TopLeftX == cases[i].out[0] && g_rec.vp.TopLeftY == cases[i].out[1] &&
+                  g_rec.vp.Width == cases[i].out[2] && g_rec.vp.Height == cases[i].out[3] &&
+                  g_rec.vp.MinDepth == 0.0f && g_rec.vp.MaxDepth == 1.0f, label);
+        check(g_rec.list == (void *)0x1122334455667788ull && g_rec.count == 1 && g_rec.aligned &&
+                  regs == ((uint64_t)cases[i].target[0] << 32 | cases[i].target[1]),
+              "  rcx, edx, rbx, rdi kept; rsp 8 mod 16 at exe+0x79D660");
+    }
+    *(void **)(stub + 0x90) = (void *)set;
+    configure(FIX_DEFAULT, 1, 1.0f, 2.0f, 2160);
+}
+
 static void test_ssaa(const wchar_t *exe)
 {
     static const uint32_t cases[][4] = {{1920, 1080, 3840, 2160}, {2560, 1440, 3840, 2160}, {3840, 2160, 3840, 2160}};
@@ -453,12 +552,17 @@ static void test_ssaa(const wchar_t *exe)
     configure(FIX_DEFAULT, 1, 1.0f, 2.0f, 2160);
     r = apply(base);
     printf("  result 0x%x\n", r);
-    check((r & 3) == 3 && !(r >> 16), "ssaa applied, D3D11CreateDevice import redirected");
+    check((r & 7) == 7 && !(r >> 16), "ssaa and movie viewport applied, D3D11CreateDevice import redirected");
     check(base[RENDER_SIZE] == 0xE8 && bytes_are(base + RENDER_SIZE + 5, "909090909090"), "render size: call stub + 6 nops");
     check(base[RENDER_QUERY] == 0xE8 && call_target(base + RENDER_QUERY) == call_target(base + RENDER_SIZE) + 0x50,
           "final pass: render size query -> stub+0x50");
-    check(pattern_at(base + LYALL_CURRENT_AT, LYALL_CURRENT) && pattern_at(base + LYALL_RENDER_AT, LYALL_RENDER),
-          "NierReplicantFix patterns still match");
+    check(base[MOVIE_VIEWPORT] == 0xE8 && call_target(base + MOVIE_VIEWPORT) == call_target(base + RENDER_SIZE) + 0x60 &&
+              *(uint8_t **)(call_target(base + RENDER_SIZE) + 0x90) == base + VIEWPORT_SET,
+          "movie viewport: call exe+0x79D660 -> stub+0x60, which goes on to exe+0x79D660");
+    check(bytes_are(base + LYALL_MOVIES_AT, "f30f1140e0f30f100503ef5900f30f1140ecf30f1148e4") &&
+              bytes_are(base + MOVIE_VIEWPORT + 5, "33c0"), "movie viewport: only the rel32 of the call changed");
+    check(pattern_at(base + LYALL_CURRENT_AT, LYALL_CURRENT) && pattern_at(base + LYALL_RENDER_AT, LYALL_RENDER) &&
+              pattern_at(base + LYALL_MOVIES_AT, LYALL_MOVIES), "NierReplicantFix patterns still match");
     stub = call_target(base + RENDER_SIZE);
     query = (Query_t)call_target(base + RENDER_QUERY);
     display = VirtualAlloc(NULL, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
@@ -484,22 +588,39 @@ static void test_ssaa(const wchar_t *exe)
         check(query(display, out) == out && out[0] == 1280 && out[1] == 720, "query: any other size passes through");
     }
     VirtualFree(display, 0, MEM_RELEASE);
+    test_movie(stub);
     FreeLibrary((HMODULE)base);
 
-    printf("5b. NierReplicantFix applied first (jb -> jmp at 0x7D4226, mid hook jump at 0x8B31EB)\n");
+    printf("5b. NierReplicantFix applied first (jb -> jmp at 0x7D4226, mid hook jumps at 0x8B31EB and 0x7B0180)\n");
     base = map_image(exe);
     write_code(base + LYALL_RENDER_AT, "eb1a");
     write_code(base + LYALL_CURRENT_AT, "e900000000");
+    write_code(base + LYALL_MOVIES_AT, "e900000000");
     r = apply(base);
-    check((r & 1) && !(r >> 16), "ssaa applied next to NierReplicantFix");
+    check((r & 1) && (r & R_MOVIE) && !(r >> 16), "ssaa and movie viewport applied next to NierReplicantFix (5-byte jump)");
+    FreeLibrary((HMODULE)base);
+    base = map_image(exe);
+    write_code(base + LYALL_MOVIES_AT, "ff25000000000000000000000000" "90909090");
+    r = apply(base);
+    check((r & R_MOVIE) && !(r >> 16) && call_target(base + MOVIE_VIEWPORT) == call_target(base + RENDER_SIZE) + 0x60,
+          "movie viewport applied next to a 14-byte jump at 0x7B0180");
+    FreeLibrary((HMODULE)base);
+
+    printf("5d. another mod at exe+0x7B0197\n");
+    base = map_image(exe);
+    write_code(base + MOVIE_VIEWPORT, "e900000000");
+    r = apply(base);
+    check((r & 1) && !(r & R_MOVIE) && (r >> 16) == R_MOVIE && bytes_are(base + MOVIE_VIEWPORT, "e900000000"),
+          "ssaa applied, movie viewport skipped, its call left alone");
     FreeLibrary((HMODULE)base);
 
     printf("6. supersampling off (RenderScale 1.0)\n");
     base = map_image(exe);
     configure(FIX_DEFAULT, 1, 1.0f, 1.0f, 2160);
     r = apply(base);
-    check(!(r & 1) && bytes_are(base + RENDER_SIZE, "488d4b284c8b8374010000") &&
-              bytes_are(base + RENDER_QUERY, "e87805f2ff"), "ssaa sites unchanged");
+    check(!(r & 1) && !(r & R_MOVIE) && bytes_are(base + RENDER_SIZE, "488d4b284c8b8374010000") &&
+              bytes_are(base + RENDER_QUERY, "e87805f2ff") && bytes_are(base + MOVIE_VIEWPORT, "e8c4d4feff"),
+          "ssaa and movie viewport sites unchanged");
     FreeLibrary((HMODULE)base);
 }
 

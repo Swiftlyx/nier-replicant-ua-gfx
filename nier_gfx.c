@@ -24,6 +24,14 @@
  * with it the size before scaling is the full output size. The final shader samples the scene once per
  * output pixel, so a factor of 2 averages exactly 2x2 pixels.
  *
+ * Movies: exe+0x7B0140 sets the viewport of a movie draw to the size of its target; the pre-rendered
+ * cutscenes are drawn over the scene buffer, which has the render size. NierReplicantFix's "HUD: Movies" hook
+ * (exe+0x7B0180..0x7B019D) replaces the height (16:9 and narrower) or the width (wider) of that viewport by a
+ * box centred in output pixels, which under supersampling covers only part of the buffer. The call that sets
+ * the viewport (exe+0x7B0197) goes to a stub that maps such a box from the size it is centred in
+ * (2 * offset + extent) onto the target when the target has the scaled render size. Only the rel32 of that
+ * call changes; NierReplicantFix's pattern has wildcards there.
+ *
  * Settings: NierReplicantGFX.ini next to the DLL. Log: NierReplicantGFX.log next to the DLL.
  */
 #include <stdio.h>
@@ -41,6 +49,8 @@
 #define RENDER_SIZE   0x7D425Eu
 #define RENDER_QUERY  0x8B3163u
 #define DISPLAY_SIZE  0x174u          /* render width and height in the display object */
+#define MOVIE_VIEWPORT 0x7B0197u      /* call exe+0x79D660 in exe+0x7B0140 (sets the movie viewport) */
+#define VIEWPORT_SET  0x79D660u
 #define SCALE_MAX     4.0f
 #define STRENGTH_MAX  4.0f
 #define ENV_MARKER    L"NIER_REPLICANT_GFX_LOADED"
@@ -51,10 +61,19 @@
 /* Result bits of NierGFX_Apply (also used by the test). */
 #define R_SSAA   0x01
 #define R_DEVICE 0x02
+#define R_MOVIE  0x04
 
 static const Site SSAA_SITES[] = {
     {RENDER_SIZE, "488d4b284c8b8374010000", NULL},   /* lea rcx, [rbx+0x28]; mov r8, [rbx+0x174] */
     {RENDER_QUERY, "e87805f2ff", NULL},               /* call exe+0x7D36E0: [rdx] = [rcx+0x174] */
+};
+
+/* exe+0x7B0140 up to NierReplicantFix's hook at exe+0x7B0180 (ebx = width, edi = height, r8 = viewport), and
+ * the call that sets the viewport. */
+static const Site MOVIE_SITES[] = {
+    {0x7B0140u, "488bc44889580848897010574883ec508bda0f57c0418bf80f57c94c8d40d848c740d800000000ba01000000"
+                "c740e800000000f3480f2ac3488bf1f3480f2acf", NULL},
+    {MOVIE_VIEWPORT, "e8c4d4feff", NULL},
 };
 
 static unsigned g_fixes = GFX_DEFAULT;
@@ -565,27 +584,55 @@ static int32_t *query_render_size(const uint8_t *display, int32_t *out)
     return out;
 }
 
+/* Maps one axis of a box centred in 2 * offset + extent onto `size`; a full (0, size) axis stays as it is. */
+static void fit_axis(FLOAT *offset, FLOAT *extent, uint32_t size)
+{
+    double span = 2.0 * (double)*offset + (double)*extent;
+    if ((*offset == 0.0f && *extent == (float)size) || !(span > 0.0))
+        return;
+    *offset = (float)((double)*offset * size / span);
+    *extent = (float)((double)*extent * size / span);
+}
+
+/*
+ * Called from the stub at exe+0x7B0197 before exe+0x79D660 copies the viewport into the command list:
+ * w x h is the size of the target the game passed to exe+0x7B0140. Only a target of the scaled render size is
+ * mapped; the game's own viewport (0, 0, w, h) is never changed.
+ */
+static void fit_movie_viewport(D3D11_VIEWPORT *vp, uint32_t w, uint32_t h)
+{
+    static volatile LONG logged;
+    D3D11_VIEWPORT in = *vp;
+    if (g_scaled_size[0] <= 0 || (int32_t)w != g_scaled_size[0] || (int32_t)h != g_scaled_size[1])
+        return;
+    fit_axis(&vp->TopLeftX, &vp->Width, w);
+    fit_axis(&vp->TopLeftY, &vp->Height, h);
+    if (memcmp(&in, vp, sizeof in) != 0 && !InterlockedExchange(&logged, 1))
+        log_line("movies   viewport %.0f,%.0f %.0fx%.0f -> %.0f,%.0f %.0fx%.0f on %ux%u", in.TopLeftX, in.TopLeftY,
+                 in.Width, in.Height, vp->TopLeftX, vp->TopLeftY, vp->Width, vp->Height, w, h);
+}
+
 /*
  * Stub called at exe+0x7D425E (rbx = display object; rsp is 16-byte aligned at the call site, so 8 on
  * entry): calls scale_render_size(rbx), then runs the two instructions the call replaced. The volatile
  * registers it clobbers are free there: rcx and r8 are set by those instructions, rdx right after.
  * At stub+0x50 a jump to query_render_size() takes the call at exe+0x8B3163 (rcx = display object,
- * rdx = destination, as for exe+0x7D36E0).
+ * rdx = destination, as for exe+0x7D36E0). Returns the stub, or NULL.
  */
-static int apply_ssaa(uint8_t *base)
+static uint8_t *apply_ssaa(uint8_t *base)
 {
     uint8_t *stub = alloc_near(base), *p, call[11], query[5];
     void *fn = (void *)scale_render_size, *qfn = (void *)query_render_size;
     int32_t d;
     if (!stub)
-        return 0;
+        return NULL;
     p = stub;
     p += unhex("4883ec28", p, 4);                 /* sub rsp, 0x28 */
     p += unhex("488bcb", p, 3);                   /* mov rcx, rbx */
     *p++ = 0xFF;                                  /* call [rip+slot] */
     *p++ = 0x15;
     if (!rel32(p + 4, stub + 0x40, &d))
-        return 0;
+        return NULL;
     memcpy(p, &d, 4);
     p += 4;
     p += unhex("4883c428", p, 4);                 /* add rsp, 0x28 */
@@ -602,14 +649,44 @@ static int apply_ssaa(uint8_t *base)
 
     call[0] = 0xE8;
     if (!rel32(base + RENDER_SIZE + 5, stub, &d))
-        return 0;
+        return NULL;
     memcpy(call + 1, &d, 4);
     memset(call + 5, 0x90, 6);
     query[0] = 0xE8;
     if (!rel32(base + RENDER_QUERY + 5, stub + 0x50, &d))
-        return 0;
+        return NULL;
     memcpy(query + 1, &d, 4);
-    return write_bytes(base + RENDER_QUERY, query, sizeof query) && write_bytes(base + RENDER_SIZE, call, sizeof call);
+    if (!write_bytes(base + RENDER_QUERY, query, sizeof query) || !write_bytes(base + RENDER_SIZE, call, sizeof call))
+        return NULL;
+    return stub;
+}
+
+/*
+ * Movie viewport stub at stub+0x60, called instead of exe+0x79D660 at exe+0x7B0197 (rcx = command list,
+ * edx = 1, r8 = viewport; ebx/edi = the target size, set at exe+0x7B0150; rsp is 8 mod 16 on entry): keeps
+ * rcx, rdx and r8, calls fit_movie_viewport(r8, ebx, edi) and jumps on to exe+0x79D660, which uses no other
+ * register and no xmm. Only the rel32 of the call is written.
+ */
+static int apply_movie(uint8_t *base, uint8_t *stub)
+{
+    uint8_t *p = stub + 0x60;
+    void *fn = (void *)fit_movie_viewport, *set = base + VIEWPORT_SET;
+    int32_t d;
+    p += unhex("51524150", p, 4);                 /* push rcx; push rdx; push r8 */
+    p += unhex("4883ec20", p, 4);                 /* sub rsp, 0x20 */
+    p += unhex("498bc8", p, 3);                   /* mov rcx, r8 */
+    p += unhex("8bd3", p, 2);                     /* mov edx, ebx */
+    p += unhex("448bc7", p, 3);                   /* mov r8d, edi */
+    p += unhex("ff1512000000", p, 6);             /* call [rip+0x12] = [stub+0x88] */
+    p += unhex("4883c420", p, 4);                 /* add rsp, 0x20 */
+    p += unhex("41585a59", p, 4);                 /* pop r8; pop rdx; pop rcx */
+    p += unhex("ff250c000000", p, 6);             /* jmp [rip+0xc] = [stub+0x90] */
+    memcpy(stub + 0x88, &fn, sizeof fn);
+    memcpy(stub + 0x90, &set, sizeof set);
+    FlushInstructionCache(GetCurrentProcess(), stub + 0x60, 0x38);
+    if (!rel32(base + MOVIE_VIEWPORT + 5, stub + 0x60, &d))
+        return 0;
+    return write_bytes(base + MOVIE_VIEWPORT + 1, &d, 4);
 }
 
 /* ------------------------------------------------------------------ entry points */
@@ -629,12 +706,22 @@ __declspec(dllexport) void NierGFX_Configure(unsigned fixes, int high_precision,
 __declspec(dllexport) unsigned NierGFX_Apply(uint8_t *base)
 {
     unsigned result = 0;
+    uint8_t *stub;
     if (g_render_scale <= 1.0f) {
         log_line("ssaa     off (RenderScale = 1.0)");
     } else if (check_group(base, SSAA_SITES, 2, R_SSAA, "ssaa", &result)) {
-        if (apply_ssaa(base)) {
+        if ((stub = apply_ssaa(base)) != NULL) {
             result |= R_SSAA;
             log_line("ssaa     applied: RenderScale %.2f, MaxRenderHeight %d", g_render_scale, g_max_height);
+            if (check_group(base, MOVIE_SITES, 2, R_MOVIE, "movies", &result)) {
+                if (apply_movie(base, stub)) {
+                    result |= R_MOVIE;
+                    log_line("movies   viewport boxes in output pixels mapped onto the render size");
+                } else {
+                    result |= R_MOVIE << 16;
+                    log_line("movies   failed: write error");
+                }
+            }
         } else {
             result |= R_SSAA << 16;
             log_line("ssaa     failed: no memory within 2 GB of the game or write error");

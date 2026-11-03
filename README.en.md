@@ -63,7 +63,7 @@ by Anthropic; terminology, style, corrections and in-game testing by Swiftlyx.
 - **Supersampling (SSAA).** The frame is rendered larger than the screen and scaled down. Off by
   default, see `RenderScale`. Works together with
   [NierReplicantFix](https://codeberg.org/Lyall/NierReplicantFix), including its support for any aspect
-  ratio.
+  ratio and its placement of the cutscene videos.
 
 Settings are in `NierReplicantGFX.ini`, each one described in the file. It lies next to the graphics DLL:
 in the game folder (Standalone), in `LunarTear\mods\NierReplicantGFX` (Lunar Tear) or next to
