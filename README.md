@@ -73,9 +73,9 @@
   [NierReplicantFix](https://codeberg.org/Lyall/NierReplicantFix), зокрема з його підтримкою екранів
   будь-якого співвідношення сторін і розміщенням відеороликів у катсценах.
 
-Усе це налаштовується у файлі `NierReplicantGFX.ini`, опис кожного параметра є в самому файлі. Він лежить
-поруч із DLL графіки: у теці гри (Standalone), у `LunarTear\mods\NierReplicantGFX` (Lunar Tear) або поруч
-із `NierReplicantGFX.asi` (ASI). Зміни діють після перезапуску гри.
+Усе це налаштовується у файлі `NierReplicantGFX.ini`, короткий опис кожного параметра англійською є в
+самому файлі. Він лежить поруч із DLL графіки: у теці гри (Standalone), у `LunarTear\mods\NierReplicantGFX`
+(Lunar Tear) або поруч із `NierReplicantGFX.asi` (ASI). Зміни діють після перезапуску гри.
 
 ### Як це виглядає
 
